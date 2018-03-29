@@ -13,6 +13,7 @@ class Wrapper:
     def _get_re_speaker_mic_array():
         for index, name in enumerate(sr.Microphone.list_microphone_names()):
             if name.startswith("ReSpeaker MicArray"):
+                print("{}: {}".format(index,name))
                 return index
 
         return None

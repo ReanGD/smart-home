@@ -1,9 +1,19 @@
 import wrap_speech_recognition
+import record
+
+
+def speech_recognition():
+    wrap_speech_recognition.run()
+
+
+def mic_record():
+    record.run()
 
 
 def main():
      print("start")
-     wrap_speech_recognition.run()
+     # speech_recognition()
+     mic_record()
      print("stop")
 
 
