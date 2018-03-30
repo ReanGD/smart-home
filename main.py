@@ -1,19 +1,25 @@
-import wrap_speech_recognition
 import record
+import hotword_detector
+import wrap_speech_recognition
 
 
-def speech_recognition():
+def run_speech_recognition():
     wrap_speech_recognition.run()
 
 
-def mic_record():
+def run_record():
     record.run()
+
+
+def run_hotword_detector():
+    hotword_detector.run()
 
 
 def main():
      print("start")
-     # speech_recognition()
-     mic_record()
+     # run_speech_recognition()
+     # run_record()
+     run_hotword_detector()
      print("stop")
 
 

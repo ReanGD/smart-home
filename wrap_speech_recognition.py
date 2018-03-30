@@ -23,7 +23,7 @@ class Wrapper:
         with self._microphone as source:
             self._recognizer.adjust_for_ambient_noise(source)
 
-        self._recognizer.energy_threshold += 50
+        # self._recognizer.energy_threshold += 50
         print("energy_threshold = {}".format(self._recognizer.energy_threshold))
         try:
             while True:

@@ -42,5 +42,5 @@ class Mic(object):
 
 def run():
     mic = Mic()
-    frames = mic.record(5)
+    frames = mic.record(3)
     mic.write(frames, "file.wav")
