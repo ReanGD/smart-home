@@ -1,9 +1,9 @@
-import utils
+import audio
 import pyaudio
 
 
 class StreamSettings(object):
-    def __init__(self, audio: utils.Audio,
+    def __init__(self, audio: audio.Audio,
                  device_index: int=None,
                  channels: int=1,
                  sample_format=pyaudio.paInt16,
@@ -48,7 +48,7 @@ class StreamSettings(object):
                               self._sample_format, self._sample_rate, self._frames_per_buffer)
 
     @property
-    def audio(self) -> utils.Audio:
+    def audio(self) -> audio.Audio:
         return self._audio
 
     @property
