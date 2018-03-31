@@ -1,9 +1,8 @@
-import audio
 import pyaudio
 
 
 class StreamSettings(object):
-    def __init__(self, audio: audio.Audio,
+    def __init__(self, audio,
                  device_index: int=None,
                  channels: int=1,
                  sample_format=pyaudio.paInt16,
@@ -12,7 +11,7 @@ class StreamSettings(object):
 
         if device_index is not None:
             assert isinstance(device_index, int), "Device index must be None or an integer"
-            count = self._audio.get_device_count()
+            count = audio.get_device_count()
             msg = ("Device index out of range ({} devices available; "
                    "device index should be between 0 and {} inclusive)")
             assert 0 <= device_index < count, msg.format(count, count - 1)
@@ -36,11 +35,16 @@ class StreamSettings(object):
         msg = "Chunk size must be a positive integer"
         assert isinstance(frames_per_buffer, int) and frames_per_buffer > 0, msg
 
+        sample_width = pyaudio.get_sample_size(sample_format)
+        msg = "Sample width must be integer between 1 and 4 inclusive"
+        assert isinstance(sample_width, int) and 1 <= sample_width <= 4, msg
+
         self._audio = audio
         self._device_index = device_index
         self._channels = channels
         self._sample_format = sample_format  # size of each sample
         self._sample_rate = sample_rate  # sampling rate in Hertz
+        self._sample_width = sample_width  # size of each sample
         self._frames_per_buffer = frames_per_buffer  # number of frames stored in each buffer
 
     def clone(self):
@@ -48,7 +52,7 @@ class StreamSettings(object):
                               self._sample_format, self._sample_rate, self._frames_per_buffer)
 
     @property
-    def audio(self) -> audio.Audio:
+    def audio(self):
         return self._audio
 
     @property
@@ -66,6 +70,10 @@ class StreamSettings(object):
     @property
     def sample_rate(self) -> int:
         return self._sample_rate
+
+    @property
+    def sample_width(self) -> int:
+        return self._sample_width
 
     @property
     def frames_per_buffer(self) -> int:
