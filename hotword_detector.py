@@ -25,8 +25,7 @@ class HotwordDetector(object):
 
         self.detector = snowboydetect.SnowboyDetect(resource_filename=resource.encode(),
                                                     model_str=decoder_model.encode())
-        audio_gain = 1
-        self.detector.SetAudioGain(audio_gain)
+        self.detector.SetAudioGain(1.0)
         self.num_hotwords = self.detector.NumHotwords()
         # assert self.num_hotwords == 1, "self.num_hotwords == 1"
         # self.detector.SetSensitivity((str(sensitivity)+","+str(sensitivity)).encode())
