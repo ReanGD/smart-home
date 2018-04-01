@@ -2,7 +2,7 @@ import pyaudio
 
 
 class StreamSettings(object):
-    def __init__(self, audio,
+    def __init__(self, device,
                  device_index: int=None,
                  channels: int=1,
                  sample_format=pyaudio.paInt16,
@@ -11,7 +11,7 @@ class StreamSettings(object):
 
         if device_index is not None:
             assert isinstance(device_index, int), "Device index must be None or an integer"
-            count = audio.get_device_count()
+            count = device.get_device_count()
             msg = ("Device index out of range ({} devices available; "
                    "device index should be between 0 and {} inclusive)")
             assert 0 <= device_index < count, msg.format(count, count - 1)
@@ -23,7 +23,7 @@ class StreamSettings(object):
         assert sample_format in valid_formats, "Invalid value fpr sample format"
 
         if sample_rate is None:
-            device_info = audio.get_device_info_by_index(device_index)
+            device_info = device.get_device_info_by_index(device_index)
             sample_rate = device_info.get("defaultSampleRate")
             assert isinstance(sample_rate, (float, int)) and sample_rate > 0, \
                 "Invalid device info returned from PyAudio: {}".format(device_info)
@@ -39,21 +39,21 @@ class StreamSettings(object):
         msg = "Sample width must be integer between 1 and 4 inclusive"
         assert isinstance(sample_width, int) and 1 <= sample_width <= 4, msg
 
-        self._audio = audio
+        self._device = device
         self._device_index = device_index
         self._channels = channels
-        self._sample_format = sample_format  # size of each sample
-        self._sample_rate = sample_rate  # sampling rate in Hertz
-        self._sample_width = sample_width  # size of each sample
-        self._frames_per_buffer = frames_per_buffer  # number of frames stored in each buffer
+        self._sample_format = sample_format
+        self._sample_rate = sample_rate
+        self._sample_width = sample_width
+        self._frames_per_buffer = frames_per_buffer
 
     def clone(self):
-        return StreamSettings(self._audio, self._device_index, self._channels,
+        return StreamSettings(self._device, self._device_index, self._channels,
                               self._sample_format, self._sample_rate, self._frames_per_buffer)
 
     @property
-    def audio(self):
-        return self._audio
+    def device(self):
+        return self._device
 
     @property
     def device_index(self) -> int:
@@ -65,16 +65,31 @@ class StreamSettings(object):
 
     @property
     def sample_format(self):
+        # sample farmat: paFloat32, paInt32, paInt24, paInt16, paInt8, paUInt8
         return self._sample_format
 
     @property
     def sample_rate(self) -> int:
+        # sampling rate in Hertz
         return self._sample_rate
 
     @property
     def sample_width(self) -> int:
+        # size of each sample
         return self._sample_width
 
     @property
     def frames_per_buffer(self) -> int:
+        # length of the audio buffer in frames
         return self._frames_per_buffer
+
+    def __str__(self):
+        formats = {pyaudio.paFloat32: "paFloat32",
+                   pyaudio.paInt32: "paInt32",
+                   pyaudio.paInt24: "paInt24",
+                   pyaudio.paInt16: "paInt16",
+                   pyaudio.paInt8: "paInt8",
+                   pyaudio.paUInt8: "paUInt8"}
+        msg = 'channels={}, sample_format={}, sample_rate={}, sample_width={}, frames_per_buffer={}'
+        return msg.format(self._channels, formats[self._sample_format], self._sample_rate,
+                          self._sample_width, self._frames_per_buffer)

@@ -7,8 +7,8 @@ class MicrophoneStream(object):
         self._settings = settings
         self._stream = steam
 
-    def read(self, size):
-        return self._stream.read(size, exception_on_overflow=False)
+    def read(self, num_frames):
+        return self._stream.read(num_frames, exception_on_overflow=False)
 
     def close(self):
         try:
