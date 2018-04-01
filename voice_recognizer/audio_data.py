@@ -1,15 +1,15 @@
 import io
 import wave
 import audioop
-import stream_settings
+from voice_recognizer.stream_settings import StreamSettings
 
 
 class AudioData(object):
-    def __init__(self, raw_data, in_settings: stream_settings.StreamSettings):
+    def __init__(self, raw_data, in_settings: StreamSettings):
         self._raw_data = raw_data
         self._in_settings = in_settings
 
-    def get_raw_data(self, out_settings: stream_settings.StreamSettings=None):
+    def get_raw_data(self, out_settings: StreamSettings=None):
         if out_settings is None:
             return self._raw_data
 
@@ -63,7 +63,7 @@ class AudioData(object):
 
         return raw_data
 
-    def write_wav_data(self, file, out_settings: stream_settings.StreamSettings = None):
+    def write_wav_data(self, file, out_settings: StreamSettings = None):
         settings = out_settings if out_settings is not None else self._in_settings
 
         wav_writer = wave.open(file, "wb")
@@ -75,7 +75,7 @@ class AudioData(object):
         finally:
             wav_writer.close()
 
-    def get_wav_data(self, out_settings: stream_settings.StreamSettings=None):
+    def get_wav_data(self, out_settings: StreamSettings=None):
         file = io.BytesIO()
         self.write_wav_data(file, out_settings)
         return file.getvalue()

@@ -1,9 +1,9 @@
 import pyaudio
-import stream_settings
+from voice_recognizer.stream_settings import StreamSettings
 
 
 class MicrophoneStream(object):
-    def __init__(self, steam: pyaudio.Stream, settings: stream_settings.StreamSettings):
+    def __init__(self, steam: pyaudio.Stream, settings: StreamSettings):
         self._settings = settings
         self._stream = steam
 
