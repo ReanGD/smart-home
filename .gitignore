@@ -10,3 +10,4 @@ venv/
 # tmp data
 *.wav
 samples/
+samples_out/

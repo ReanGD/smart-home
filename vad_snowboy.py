@@ -32,12 +32,12 @@ class Snowboy(object):
     def run_detection(self, frame):
         snowboy_result = self._detector.RunDetection(frame)
         assert snowboy_result != -1, "Error initializing streams or reading audio data"
-        if snowboy_result == -2:
+        if snowboy_result == -2:  # silent
             return False
-        elif snowboy_result == 0:
+        elif snowboy_result == 0:  # voice found
             return True
         else:
-            print('voice found')
+            print('found world {}'.format(snowboy_result))
             return True
 
 
