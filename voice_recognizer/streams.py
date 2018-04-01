@@ -16,3 +16,18 @@ class MicrophoneStream(object):
                 self._stream.stop_stream()
         finally:
             self._stream.close()
+
+
+class DataStream(object):
+    def __init__(self, raw_data, settings: StreamSettings):
+        self._settings = settings
+        self._stream = raw_data
+        self._offset = 0
+
+    def read(self, num_frames):
+        start = self._offset
+        self._offset += (num_frames * self._settings.sample_width)
+        return self._stream[start:self._offset]
+
+    def close(self):
+        self._stream = b''

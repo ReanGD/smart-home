@@ -1,5 +1,5 @@
 import pyaudio
-from voice_recognizer.microphone_stream import MicrophoneStream
+from voice_recognizer.streams import MicrophoneStream, DataStream
 from voice_recognizer.stream_settings import StreamSettings
 
 
@@ -54,8 +54,16 @@ class Device(object):
         self._streams.append(mic_stream)
         return mic_stream
 
-    def terminate(self):
+    def create_data_stream(self, raw_data, settings: StreamSettings):
+        data_stream = DataStream(raw_data, settings)
+        self._streams.append(data_stream)
+        return data_stream
+
+    def close_streams(self):
         for stream in self._streams:
             stream.close()
+        self._streams.clear()
 
+    def terminate(self):
+        self.close_streams()
         self._device.terminate()
