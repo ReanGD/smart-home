@@ -1,39 +1,44 @@
-import utils
-import record
-import hotword_detector
+import vad_webrtcvad
+import vad_snowboy
+import vad_test
 import wrap_speech_recognition
+import voice_recognizer as vr
 
-
-def print_microphones():
-    model = '/home/rean/projects/git/smart-home/external/snowboy/resources/alexa/alexa-avs-sample-app/alexa.umdl'
-    resource = '/home/rean/projects/git/smart-home/external/snowboy/resources/common.res'
-
-    snowboy = utils.Snowboy(resource, model, sensitivity=1.0, audio_gain=1.0)
-    audio = utils.Audio()
-    # mic = audio.create_microphone()
-    mic = audio.create_microphone_by_snowboy(snowboy)
-    for _ in range(10):
-        mic.wait_for_hot_word(snowboy)
-    audio.terminate()
 
 def run_speech_recognition():
     wrap_speech_recognition.run()
 
 
-def run_record():
-    record.run()
+def test_record():
+    seconds = 15
+
+    manager = vr.Device()
+    try:
+        settings = vr.StreamSettings(manager)
+        print("settings: {}".format(settings))
+        mic = manager.create_microphone_stream(settings)
+
+        step_cnt = int(settings.sample_rate / settings.frames_per_buffer * seconds)
+        print("start record...")
+        data = b''.join([mic.read(settings.frames_per_buffer) for _ in range(step_cnt)])
+        print("stop record...")
+
+        vr.AudioData(data, settings).write_wav_data("record.wav")
+    finally:
+        manager.terminate()
 
 
-def run_hotword_detector():
-    hotword_detector.run()
+def test_vad():
+    # vad_webrtcvad.run()
+    vad_test.run()
+    # vad_snowboy.run()
 
 
 def main():
      print("start")
-     print_microphones()
      # run_speech_recognition()
-     # run_record()
-     # run_hotword_detector()
+     # test_record()
+     test_vad()
      print("stop")
 
 

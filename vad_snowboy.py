@@ -1,7 +1,7 @@
 import pyaudio
-import external.snowboy.snowboydetect as snowboydetect
-import voice_recognizer as vr
 import vad_utils
+import voice_recognizer as vr
+import external.snowboy.snowboydetect as snowboydetect
 
 
 class Snowboy(object):
@@ -11,6 +11,8 @@ class Snowboy(object):
                  'alexa/alexa-avs-sample-app/alexa.umdl')
         self._sensitivity = sensitivity
         self._audio_gain = audio_gain
+        self._frames_read = 0
+
         self._detector = snowboydetect.SnowboyDetect(resource_filename=res.encode(),
                                                      model_str=model.encode())
         self._detector.SetAudioGain(audio_gain)
@@ -19,6 +21,9 @@ class Snowboy(object):
 
     def clone(self):
         return Snowboy(self._sensitivity, self._audio_gain)
+
+    def set_frames_read(self, frames_read):
+        self._frames_read = frames_read
 
     def get_audio_settings(self, device, device_index=None):
         channels = self._detector.NumChannels()

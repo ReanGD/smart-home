@@ -1,7 +1,7 @@
 import pyaudio
+import vad_utils
 import webrtcvad
 import voice_recognizer as vr
-import vad_utils
 
 
 class VadWrap(object):
@@ -10,12 +10,17 @@ class VadWrap(object):
         self._vad.set_mode(mode)
         self._mode = mode
         self._sample_rate = sample_rate
+        self._frames_read = 0
 
     def clone(self):
         return VadWrap(self._mode, self._sample_rate)
 
+    def set_frames_read(self, frames_read):
+        self._frames_read = frames_read
+
     def get_audio_settings(self, device, device_index=None):
         return vr.StreamSettings(device,
+                                 device_index=device_index,
                                  sample_format=pyaudio.paInt16,
                                  frames_per_buffer=1024)
 

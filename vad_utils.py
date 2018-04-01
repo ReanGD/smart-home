@@ -2,7 +2,7 @@ import collections
 import voice_recognizer as vr
 
 
-def check_one(device, is_mic, vad, settings, path, is_write):
+def check_one(device, is_mic, vad, settings: vr.StreamSettings, path, is_write):
     if is_mic:
         stream = device.create_microphone_stream(settings)
     else:
@@ -10,7 +10,9 @@ def check_one(device, is_mic, vad, settings, path, is_write):
         stream = device.create_data_stream(raw_data, settings)
 
     # valid = 80, 160, 240
-    freames_read = 160
+    frames_read = 160  # 10 ms
+    # print("chank = {} ms".format(frames_read * 1000 / settings.sample_rate))
+    vad.set_frames_read(frames_read)
 
     ring_buffer = collections.deque(maxlen=50)
     ring_voice_frames = collections.deque(maxlen=50)
@@ -20,8 +22,8 @@ def check_one(device, is_mic, vad, settings, path, is_write):
     periods = []
     voice_frames = []
     while True:
-        frames = stream.read(freames_read)
-        if len(frames) != freames_read * settings.sample_width:
+        frames = stream.read(frames_read)
+        if len(frames) != frames_read * settings.sample_width:
             break
 
         is_speech = vad.is_speech(frames)
@@ -66,7 +68,7 @@ def check_one(device, is_mic, vad, settings, path, is_write):
 
 def check_all(vad):
     is_mic = False
-    is_write = True
+    is_write = False
 
     paths = ['samples/voice.wav', 'samples/voice_music_1.wav', 'samples/voice_music_2.wav',
              'samples/voice_music_3.wav', 'samples/voice_music_4.wav', 'samples/voice_music_5.wav',
