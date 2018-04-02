@@ -29,10 +29,13 @@ def test_record():
 
 
 def test_vad():
-    # vad_webrtcvad.run()
-    vad_test.run()
-    # vad_snowboy.run()
-
+    device = vr.Device()
+    try:
+        # vad_webrtcvad.run(device)
+        vad_test.run(device)
+        # vad_snowboy.run(device)
+    finally:
+        device.terminate()
 
 def main():
      print("start")

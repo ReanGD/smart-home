@@ -2,6 +2,23 @@ import collections
 import voice_recognizer as vr
 
 
+class VadBase(object):
+    def clone(self):
+        raise Exception("clone not implemented")
+
+    def init(self, frames_read, path):
+        pass
+
+    def get_audio_settings(self):
+        raise Exception("get_audio_settings not implemented")
+
+    def is_speech(self, frames):
+        raise Exception("is_speech not implemented")
+
+    def close(self):
+        pass
+
+
 def check_one(device, is_mic, vad, settings: vr.StreamSettings, path, is_write):
     if is_mic:
         stream = device.create_microphone_stream(settings)
@@ -12,7 +29,7 @@ def check_one(device, is_mic, vad, settings: vr.StreamSettings, path, is_write):
     # valid = 80, 160, 240
     frames_read = 160  # 10 ms
     # print("chank = {} ms".format(frames_read * 1000 / settings.sample_rate))
-    vad.set_frames_read(frames_read)
+    vad.init(frames_read, path)
 
     ring_buffer = collections.deque(maxlen=50)
     ring_voice_frames = collections.deque(maxlen=50)
@@ -66,7 +83,7 @@ def check_one(device, is_mic, vad, settings: vr.StreamSettings, path, is_write):
                                            for start_period, stop_period in periods])))
 
 
-def check_all(vad):
+def check_all(device, vad, test_path=None):
     is_mic = False
     is_write = False
 
@@ -80,15 +97,14 @@ def check_all(vad):
     if is_write:
         paths = ['samples/voice_music_6.wav']
 
-    device = vr.Device()
+    if test_path is not None:
+        paths = [test_path]
 
-    try:
-        settings = vad.get_audio_settings(device)
-        print("settings: {}".format(settings))
+    settings = vad.get_audio_settings()
+    print("settings: {}".format(settings))
 
-        for path in paths:
-            vad = vad.clone()
-            check_one(device, is_mic, vad, settings, path, is_write)
-            device.close_streams()
-    finally:
-        device.terminate()
+    for path in paths:
+        vad = vad.clone()
+        check_one(device, is_mic, vad, settings, path, is_write)
+        vad.close()
+        device.close_streams()
