@@ -23,7 +23,7 @@ def test_record():
         data = b''.join([mic.read(settings.frames_per_buffer) for _ in range(step_cnt)])
         print("stop record...")
 
-        vr.AudioData(data, settings).write_wav_data("record.wav")
+        vr.AudioData(data, settings).save_as_wav("record.wav")
     finally:
         manager.terminate()
 
@@ -31,18 +31,18 @@ def test_record():
 def test_vad():
     device = vr.Device()
     try:
-        # vad_webrtcvad.run(device)
-        vad_test.run(device)
-        # vad_snowboy.run(device)
+        vad_webrtcvad.run(device)
+        # vad_test.run(device)
+        vad_snowboy.run(device)
     finally:
         device.terminate()
 
 def main():
-     print("start")
-     # run_speech_recognition()
-     # test_record()
-     test_vad()
-     print("stop")
+    print("start")
+    # run_speech_recognition()
+    # test_record()
+    test_vad()
+    print("stop")
 
 
 if __name__ == '__main__':

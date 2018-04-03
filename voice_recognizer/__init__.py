@@ -1,5 +1,4 @@
 from voice_recognizer.device import Device
 from voice_recognizer.audio_data import AudioData
-from voice_recognizer.audio_file import AudioFile
 from voice_recognizer.stream_settings import StreamSettings
 from voice_recognizer.streams import MicrophoneStream, DataStream

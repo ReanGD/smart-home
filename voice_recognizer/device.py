@@ -1,6 +1,7 @@
 import pyaudio
 from voice_recognizer.streams import MicrophoneStream, DataStream
 from voice_recognizer.stream_settings import StreamSettings
+from voice_recognizer.audio_data import AudioData
 
 
 class Device(object):
@@ -54,8 +55,8 @@ class Device(object):
         self._streams.append(mic_stream)
         return mic_stream
 
-    def create_data_stream(self, raw_data, settings: StreamSettings):
-        data_stream = DataStream(raw_data, settings)
+    def create_data_stream(self, data: AudioData):
+        data_stream = DataStream(data.get_raw_data(), data.get_settings())
         self._streams.append(data_stream)
         return data_stream
 

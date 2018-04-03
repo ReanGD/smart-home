@@ -1,5 +1,6 @@
 import io
 import wave
+import pyaudio
 import audioop
 from voice_recognizer.stream_settings import StreamSettings
 
@@ -63,7 +64,25 @@ class AudioData(object):
 
         return raw_data
 
-    def write_wav_data(self, file, out_settings: StreamSettings = None):
+    def get_settings(self) -> StreamSettings:
+        return self._in_settings
+
+    @staticmethod
+    def load_as_wav(file, out_settings: StreamSettings):
+        wav_reader = wave.open(file, "rb")
+        try:
+            sample_format = pyaudio.get_format_from_width(wav_reader.getsampwidth())
+            in_settings = StreamSettings(out_settings.device,
+                                         channels = wav_reader.getnchannels(),
+                                         sample_rate = wav_reader.getframerate(),
+                                         sample_format = sample_format)
+            raw_data = wav_reader.readframes(wav_reader.getnframes())
+            raw_data = AudioData(raw_data, in_settings).get_raw_data(out_settings)
+            return AudioData(raw_data, out_settings)
+        finally:
+            wav_reader.close()
+
+    def save_as_wav(self, file, out_settings: StreamSettings = None):
         settings = out_settings if out_settings is not None else self._in_settings
 
         wav_writer = wave.open(file, "wb")
@@ -77,5 +96,5 @@ class AudioData(object):
 
     def get_wav_data(self, out_settings: StreamSettings=None):
         file = io.BytesIO()
-        self.write_wav_data(file, out_settings)
+        self.save_as_wav(file, out_settings)
         return file.getvalue()

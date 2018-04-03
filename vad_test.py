@@ -109,7 +109,7 @@ def run(device):
                                  frames_per_buffer=1024)
 
     dynamic_energy_threshold = True
-    # path = None
+    path = None
     # path = 'samples/voice.wav'
-    path = 'samples/voice_music_8.wav'
+    # path = 'samples/voice_music_8.wav'
     vad_utils.check_all(device, VadTest(settings, dynamic_energy_threshold), path)
