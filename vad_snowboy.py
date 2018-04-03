@@ -9,42 +9,19 @@ class Snowboy(vad_utils.VadBase):
         res = '/home/rean/projects/git/smart-home/external/snowboy/resources/common.res'
         model = ('/home/rean/projects/git/smart-home/external/snowboy/resources/'
                  'alexa/alexa-avs-sample-app/alexa.umdl')
+        self._snowboy = vr.SnowboyWrap(res, model, sensitivity, audio_gain)
         self._device = device
-        self._sensitivity = sensitivity
-        self._audio_gain = audio_gain
-
-        self._detector = snowboydetect.SnowboyDetect(resource_filename=res.encode(),
-                                                     model_str=model.encode())
-        self._detector.SetAudioGain(audio_gain)
-        num_hotwords = self._detector.NumHotwords()
-        self._detector.SetSensitivity(",".join([str(sensitivity)] * num_hotwords).encode())
 
     def clone(self):
-        return Snowboy(self._device, self._sensitivity, self._audio_gain)
+        return Snowboy(self._device,
+                       self._snowboy.get_sensitivity(),
+                       self._snowboy.get_audio_gain())
 
     def get_audio_settings(self):
-        channels = self._detector.NumChannels()
-        sample_format = pyaudio.get_format_from_width(self._detector.BitsPerSample() / 8)
-        sample_rate = self._detector.SampleRate()
-        frames_per_buffer = 2048
-
-        return vr.StreamSettings(self._device,
-                                 device_index=None,
-                                 channels=channels,
-                                 sample_format=sample_format,
-                                 sample_rate=sample_rate,
-                                 frames_per_buffer=frames_per_buffer)
+        return self._snowboy.get_audio_settings(self._device)
 
     def is_speech(self, frame):
-        snowboy_result = self._detector.RunDetection(frame)
-        assert snowboy_result != -1, "Error initializing streams or reading audio data"
-        if snowboy_result == -2:  # silent
-            return False
-        elif snowboy_result == 0:  # voice found
-            return True
-        else:
-            print('found world {}'.format(snowboy_result))
-            return True
+        return self._snowboy.is_speech(frame)
 
 
 def run(device):
