@@ -1,6 +1,6 @@
 import pyaudio
-from voice_recognizer.stream_settings import StreamSettings
 from voice_recognizer.device import Device
+from voice_recognizer.stream_settings import StreamSettings
 import external.snowboy.snowboydetect as snowboydetect
 
 

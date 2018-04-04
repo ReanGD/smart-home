@@ -1,7 +1,5 @@
-import pyaudio
 import vad_utils
 import voice_recognizer as vr
-import external.snowboy.snowboydetect as snowboydetect
 
 
 class Snowboy(vad_utils.VadBase):

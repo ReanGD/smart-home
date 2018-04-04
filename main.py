@@ -1,6 +1,7 @@
 import vad_webrtcvad
 import vad_snowboy
 import vad_test
+import settings
 import wrap_speech_recognition
 import voice_recognizer as vr
 
@@ -37,11 +38,41 @@ def test_vad():
     finally:
         device.terminate()
 
+
+def test_voice_recognition():
+    manager = vr.Device()
+    try:
+        recognizer = vr.Recognizer(settings.snowboy_res, settings.snowboy_model,
+                                   settings.ya_key, settings.ya_user)
+        set = recognizer.get_audio_settings(manager)
+        print("settings: {}".format(set))
+        mic = manager.create_microphone_stream(set)
+
+        print("start wait hotword...")
+        if not recognizer.wait_hotword(mic):
+            print("error")
+            return
+
+        print("start record...")
+        data = recognizer.read_phrase(mic)
+        if data is None:
+            print("error")
+            return
+
+        print("start send...")
+        # vr.AudioData(data, set).save_as_wav("record.wav")
+        result = recognizer.recognize_yandex(data, set)
+        print(result)
+    finally:
+        manager.terminate()
+
+
 def main():
     print("start")
     # run_speech_recognition()
     # test_record()
-    test_vad()
+    # test_vad()
+    test_voice_recognition()
     print("stop")
 
 

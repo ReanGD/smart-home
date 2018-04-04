@@ -51,6 +51,12 @@ class StreamSettings(object):
         return StreamSettings(self._device, self._device_index, self._channels,
                               self._sample_format, self._sample_rate, self._frames_per_buffer)
 
+    def get_duration_ms_by_frames_count(self, count):
+        return int(count * 1000.0 / self._sample_rate)
+
+    def get_frames_count_by_duration_ms(self, ms):
+        return int(ms * self._sample_rate / 1000.0)
+
     @property
     def device(self):
         return self._device
