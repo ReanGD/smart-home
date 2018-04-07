@@ -1,6 +1,6 @@
 import vad_utils
 import voice_recognizer as vr
-import settings as config
+import config
 
 
 class Snowboy(vad_utils.VadBase):

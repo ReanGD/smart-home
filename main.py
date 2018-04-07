@@ -1,13 +1,24 @@
 import vad_webrtcvad
 import vad_snowboy
 import vad_test
-import settings
+import config
 import wrap_speech_recognition
 import voice_recognizer as vr
+from respeaker.pixel_ring import pixel_ring
 
 
 def run_speech_recognition():
     wrap_speech_recognition.run()
+
+
+def print_list():
+    manager = vr.Device()
+    try:
+        for ind in range(manager.get_device_count()):
+            print(manager.get_device_info_by_index(ind))
+            print()
+    finally:
+        manager.terminate()
 
 
 def test_record():
@@ -15,7 +26,7 @@ def test_record():
 
     manager = vr.Device()
     try:
-        settings = vr.StreamSettings(manager)
+        settings = vr.StreamSettings(manager, device_index=7)
         print("settings: {}".format(settings))
         mic = manager.create_microphone_stream(settings)
 
@@ -41,10 +52,10 @@ def test_vad():
 
 def test_voice_recognition():
     manager = vr.Device()
+    pixel_ring.off()
     try:
-        recognizer = vr.Recognizer(settings.snowboy_res, settings.snowboy_model,
-                                   settings.ya_key, settings.ya_user)
-        set = recognizer.get_audio_settings(manager)
+        recognizer = vr.Recognizer(config.yandex, config.snowboy, config.pocket_sphinx)
+        set = recognizer.get_audio_settings(manager, device_index=None)
         print("settings: {}".format(set))
         mic = manager.create_microphone_stream(set)
 
@@ -53,23 +64,27 @@ def test_voice_recognition():
             print("error")
             return
 
+        pixel_ring.set_volume(12)
         print("start record...")
         data = recognizer.read_phrase(mic)
         if data is None:
             print("error")
             return
 
+        pixel_ring.wait()
         print("start send...")
         # vr.AudioData(data, set).save_as_wav("record.wav")
         result = recognizer.recognize_yandex(data, set)
         print(result)
     finally:
+        pixel_ring.off()
         manager.terminate()
 
 
 def main():
     print("start")
     # run_speech_recognition()
+    # print_list()
     # test_record()
     # test_vad()
     test_voice_recognition()
