@@ -1,4 +1,3 @@
-import requests
 import collections
 from voice_recognizer.device import Device
 from voice_recognizer.streams import Stream
@@ -6,27 +5,14 @@ from voice_recognizer.wrap_snowboy import SnowboyWrap, SnowboyConfig
 from voice_recognizer.wrap_pocketsphinx import PocketSphinxWrap, PocketSphinxConfig
 from voice_recognizer.audio_data import AudioData
 from voice_recognizer.stream_settings import StreamSettings
-
-
-class YandexConfig(object):
-    def __init__(self, key, user_uuid, topic='queries', lang='ru-RU', disable_antimat=True):
-        self.key = key
-        self.user_uuid = user_uuid
-        self.topic = topic
-        self.lang = lang
-        self.disable_antimat = disable_antimat
-
-    def get_url(self):
-        tmp = 'https://asr.yandex.net/asr_xml?uuid={}&key={}&topic={}&lang={}&disableAntimat={}'
-        disable_antimat = str(self.disable_antimat).lower()
-        return tmp.format(self.user_uuid, self.key, self.topic, self.lang, disable_antimat)
+from voice_recognizer.wrappers.recognizer import RecognizerSettings
 
 
 class Recognizer(object):
-    def __init__(self, yandex_config: YandexConfig, snowboy_config: SnowboyConfig,
+    def __init__(self, recognizer_settings: RecognizerSettings, snowboy_config: SnowboyConfig,
                  pocket_sphinx_config: PocketSphinxConfig=None):
         self._stream = None
-        self._ya_url = yandex_config.get_url()
+        self._recognizer = recognizer_settings.create_recognizer()
         self._snowboy = SnowboyWrap(snowboy_config)
         if pocket_sphinx_config is not None:
             self._hotword_detector = PocketSphinxWrap(pocket_sphinx_config)
@@ -53,7 +39,7 @@ class Recognizer(object):
             if self._hotword_detector.is_hotword(frames):
                 return True
 
-    def read_phrase(self, stream: Stream, timeout_sec=20):
+    def read_phrase(self, stream: Stream, timeout_sec=20) -> AudioData:
         settings = stream.get_settings()
         period_ms = 20
         frames_cnt = settings.get_frames_count_by_duration_ms(period_ms)
@@ -89,11 +75,7 @@ class Recognizer(object):
                 if silent_cnt > silent_max:
                     break
 
-        return b''.join(voice[:-silent_max])
+        return AudioData(b''.join(voice[:-silent_max]), stream.get_settings())
 
-    def recognize_yandex(self, raw_date, settings):
-        wav_data = AudioData(raw_date, settings).get_wav_data()
-        headers = {'Content-Type': 'audio/x-wav'}
-        r = requests.post(self._ya_url, headers=headers, data=wav_data)
-
-        return r.text
+    def recognize(self, audio_date: AudioData):
+        return self._recognizer.recognize(audio_date)

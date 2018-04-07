@@ -44,7 +44,7 @@ def test_vad():
     device = vr.Device()
     try:
         vad_webrtcvad.run(device)
-        # vad_test.run(device)
+        vad_test.run(device)
         vad_snowboy.run(device)
     finally:
         device.terminate()
@@ -55,9 +55,9 @@ def test_voice_recognition():
     pixel_ring.off()
     try:
         recognizer = vr.Recognizer(config.yandex, config.snowboy, config.pocket_sphinx)
-        set = recognizer.get_audio_settings(manager, device_index=None)
-        print("settings: {}".format(set))
-        mic = manager.create_microphone_stream(set)
+        settings = recognizer.get_audio_settings(manager, device_index=None)
+        print("settings: {}".format(settings))
+        mic = manager.create_microphone_stream(settings)
 
         print("start wait hotword...")
         if not recognizer.wait_hotword(mic):
@@ -71,11 +71,12 @@ def test_voice_recognition():
             print("error")
             return
 
-        pixel_ring.wait()
         print("start send...")
-        # vr.AudioData(data, set).save_as_wav("record.wav")
-        result = recognizer.recognize_yandex(data, set)
+        pixel_ring.wait()
+        result = recognizer.recognize(data)
         print(result)
+    except KeyboardInterrupt:
+        pass
     finally:
         pixel_ring.off()
         manager.terminate()
