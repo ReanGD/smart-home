@@ -4,29 +4,39 @@ from voice_recognizer.stream_settings import StreamSettings
 import external.snowboy.snowboydetect as snowboydetect
 
 
+class SnowboyConfig(object):
+    def __init__(self, resource_path, model_path, sensitivity=0.5, audio_gain=1.0):
+        self.resource_path = resource_path
+        self.model_path = model_path
+        self.sensitivity = sensitivity
+        self.audio_gain = audio_gain
+
+
 class SnowboyWrap(object):
-    def __init__(self, resource_filename, model_str, sensitivity=0.5, audio_gain=1.0):
-        self._detector = snowboydetect.SnowboyDetect(resource_filename=resource_filename.encode(),
-                                                     model_str=model_str.encode())
-        self._sensitivity = sensitivity
-        self.set_sensitivity(sensitivity)
-        self._audio_gain = audio_gain
-        self.set_audio_gain(audio_gain)
+    def __init__(self, config: SnowboyConfig):
+        self._config = config
+        self._detector = snowboydetect.SnowboyDetect(config.resource_path.encode(),
+                                                     config.model_path.encode())
+        self.set_sensitivity(self._config.sensitivity)
+        self.set_audio_gain(self._config.audio_gain)
+
+    def get_config(self):
+        return self._config
 
     def set_audio_gain(self, value):
-        self._audio_gain = value
+        self._config.audio_gain = value
         self._detector.SetAudioGain(value)
 
     def get_audio_gain(self):
-        return self._audio_gain
+        return self._config.audio_gain
 
     def set_sensitivity(self, value):
-        self._sensitivity = value
+        self._config.sensitivity = value
         num_hotwords = self._detector.NumHotwords()
         self._detector.SetSensitivity(",".join([str(value)] * num_hotwords).encode())
 
     def get_sensitivity(self):
-        return self._sensitivity
+        return self._config.sensitivity
 
     def get_audio_settings(self,
                            device: Device,

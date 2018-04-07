@@ -2,18 +2,19 @@ import requests
 import collections
 from voice_recognizer.device import Device
 from voice_recognizer.streams import Stream
-from voice_recognizer.wrap_snowboy import SnowboyWrap
+from voice_recognizer.wrap_snowboy import SnowboyWrap, SnowboyConfig
 from voice_recognizer.wrap_pocketsphinx import PocketSphinxWrap, PocketSphinxConfig
 from voice_recognizer.audio_data import AudioData
 from voice_recognizer.stream_settings import StreamSettings
 
 
 class Recognizer(object):
-    def __init__(self, resource_filename, model_str, ya_key, ya_user,
+    def __init__(self, ya_key, ya_user,
+                 snowboy_config: SnowboyConfig,
                  pocket_sphinx_config: PocketSphinxConfig=None):
         self._stream = None
         self._ya_base_url = 'https://asr.yandex.net/asr_xml?uuid={}&key={}'.format(ya_user, ya_key)
-        self._snowboy = SnowboyWrap(resource_filename, model_str, sensitivity=0.5, audio_gain=1.0)
+        self._snowboy = SnowboyWrap(snowboy_config)
         if pocket_sphinx_config is not None:
             self._hotword_detector = PocketSphinxWrap(pocket_sphinx_config)
         else:

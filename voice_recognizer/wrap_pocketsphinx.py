@@ -25,6 +25,9 @@ class PocketSphinxWrap(object):
 
         return Decoder(config)
 
+    def get_config(self):
+        return self._config
+
     def is_hotword(self, frames):
         if not self._is_start:
             self._is_start = True
