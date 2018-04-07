@@ -1,5 +1,6 @@
 import pyaudio
 from voice_recognizer.stream_settings import StreamSettings
+from voice_recognizer.audio_data import AudioData
 
 
 class Stream(object):
@@ -30,6 +31,20 @@ class MicrophoneStream(Stream):
                 self._stream.stop_stream()
         finally:
             self._stream.close()
+
+
+class MicrophoneSavedStream(MicrophoneStream):
+    def __init__(self, steam: pyaudio.Stream, settings: StreamSettings):
+        super().__init__(steam, settings)
+        self._data = []
+
+    def read(self, num_frames):
+        frames = super().read(num_frames)
+        self._data.append(frames)
+        return frames
+
+    def get_data(self) -> AudioData:
+        return AudioData(b''.join(self._data), self._settings)
 
 
 class DataStream(Stream):

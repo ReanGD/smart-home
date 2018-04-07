@@ -1,5 +1,5 @@
 import pyaudio
-from voice_recognizer.streams import MicrophoneStream, DataStream
+from voice_recognizer.streams import MicrophoneStream, MicrophoneSavedStream, DataStream
 from voice_recognizer.stream_settings import StreamSettings
 from voice_recognizer.audio_data import AudioData
 
@@ -42,7 +42,7 @@ class Device(object):
                 print()
                 Device._print_microphone_info(device_info)
 
-    def create_microphone_stream(self, settings: StreamSettings):
+    def create_microphone_stream(self, settings: StreamSettings, with_save=False):
         stream = self._device.open(input_device_index=settings.device_index,
                                    channels=settings.channels,
                                    format=settings.sample_format,
@@ -51,7 +51,10 @@ class Device(object):
                                    input=True,
                                    stream_callback=None)
 
-        mic_stream = MicrophoneStream(stream, settings)
+        if with_save:
+            mic_stream = MicrophoneSavedStream(stream, settings)
+        else:
+            mic_stream = MicrophoneStream(stream, settings)
         self._streams.append(mic_stream)
         return mic_stream
 

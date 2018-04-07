@@ -21,7 +21,7 @@ class Recognizer(object):
 
     def wait_hotword(self, stream: Stream):
         settings = stream.get_settings()
-        period_ms = 20
+        period_ms = 40
         frames_cnt = settings.get_frames_count_by_duration_ms(period_ms)
         assert frames_cnt <= settings.frames_per_buffer, "Invalid frames_per_buffer in settings"
 
