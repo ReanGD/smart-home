@@ -11,3 +11,4 @@ venv/
 *.wav
 samples/
 samples_out/
+pocketsphinx/
