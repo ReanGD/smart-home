@@ -8,12 +8,25 @@ from voice_recognizer.audio_data import AudioData
 from voice_recognizer.stream_settings import StreamSettings
 
 
+class YandexConfig(object):
+    def __init__(self, key, user_uuid, topic='queries', lang='ru-RU', disable_antimat=True):
+        self.key = key
+        self.user_uuid = user_uuid
+        self.topic = topic
+        self.lang = lang
+        self.disable_antimat = disable_antimat
+
+    def get_url(self):
+        tmp = 'https://asr.yandex.net/asr_xml?uuid={}&key={}&topic={}&lang={}&disableAntimat={}'
+        disable_antimat = str(self.disable_antimat).lower()
+        return tmp.format(self.user_uuid, self.key, self.topic, self.lang, disable_antimat)
+
+
 class Recognizer(object):
-    def __init__(self, ya_key, ya_user,
-                 snowboy_config: SnowboyConfig,
+    def __init__(self, yandex_config: YandexConfig, snowboy_config: SnowboyConfig,
                  pocket_sphinx_config: PocketSphinxConfig=None):
         self._stream = None
-        self._ya_base_url = 'https://asr.yandex.net/asr_xml?uuid={}&key={}'.format(ya_user, ya_key)
+        self._ya_url = yandex_config.get_url()
         self._snowboy = SnowboyWrap(snowboy_config)
         if pocket_sphinx_config is not None:
             self._hotword_detector = PocketSphinxWrap(pocket_sphinx_config)
@@ -80,8 +93,7 @@ class Recognizer(object):
 
     def recognize_yandex(self, raw_date, settings):
         wav_data = AudioData(raw_date, settings).get_wav_data()
-
-        url = self._ya_base_url + '&topic=queries&disableAntimat=true&lang=ru-RU'
         headers = {'Content-Type': 'audio/x-wav'}
-        r = requests.post(url, headers=headers, data=wav_data)
+        r = requests.post(self._ya_url, headers=headers, data=wav_data)
+
         return r.text
