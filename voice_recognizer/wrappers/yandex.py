@@ -1,6 +1,7 @@
 import requests
-from voice_recognizer.wrappers.recognizer import RecognizerSettings, Recognizer
+import xml.etree.ElementTree
 from voice_recognizer.audio_data import AudioData
+from voice_recognizer.wrappers.recognizer import RecognizerSettings, Recognizer
 
 
 class Yandex(Recognizer):
@@ -12,7 +13,14 @@ class Yandex(Recognizer):
         headers = {'Content-Type': 'audio/x-wav'}
         r = requests.post(self._recognize_url, headers=headers, data=audio_date.get_wav_data())
 
-        return r.text
+        if r.status_code != 200:
+            return None
+
+        root = xml.etree.ElementTree.fromstring(r.text)
+        if root.attrib['success'] == '0':
+            return None
+
+        return [child.text for child in root]
 
 
 class YandexConfig(RecognizerSettings):
