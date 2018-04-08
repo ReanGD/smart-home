@@ -10,15 +10,15 @@ class Yandex(Recognizer):
         self._recognize_url = settings.get_url()
 
     def recognize(self, audio_date: AudioData):
-        headers = {'Content-Type': 'audio/x-wav'}
-        r = requests.post(self._recognize_url, headers=headers, data=audio_date.get_wav_data())
+        headers = {'Content-Type': 'audio/x-pcm;bit=16;rate=16000'}
+        r = requests.post(self._recognize_url, headers=headers, data=audio_date.get_raw_data())
 
         if r.status_code != 200:
             return None
 
         root = xml.etree.ElementTree.fromstring(r.text)
         if root.attrib['success'] == '0':
-            return None
+            return []
 
         return [child.text for child in root]
 
