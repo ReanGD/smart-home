@@ -1,19 +1,21 @@
-from voice_recognizer.audio_data import AudioData
+from voice_recognizer.stream_settings import StreamSettings
 
 
 class Recognizer(object):
     def __init__(self, settings):
         self._settings = settings
 
-    def recognize(self, audio_date: AudioData):
-        raise Exception('Not implemented "audio_date"')
+    def recognize_start(self, data_settings: StreamSettings):
+        raise Exception('Not implemented "recognize_start"')
+
+    def recognize_add_frames(self, raw_frames):
+        raise Exception('Not implemented "recognize_add_data"')
+
+    def recognize_finish(self):
+        raise Exception('Not implemented "recognize_finish"')
 
 
 class RecognizerSettings(object):
     def create_recognizer(self) -> Recognizer:
         raise Exception('Not implemented "create_recognizer"')
-
-
-
-
 

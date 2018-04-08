@@ -1,11 +1,10 @@
 import collections
 from voice_recognizer.device import Device
 from voice_recognizer.streams import Stream
-from voice_recognizer.wrap_snowboy import SnowboyWrap, SnowboyConfig
-from voice_recognizer.wrap_pocketsphinx import PocketSphinxWrap, PocketSphinxConfig
-from voice_recognizer.audio_data import AudioData
 from voice_recognizer.stream_settings import StreamSettings
 from voice_recognizer.wrappers.recognizer import RecognizerSettings
+from voice_recognizer.wrap_snowboy import SnowboyWrap, SnowboyConfig
+from voice_recognizer.wrap_pocketsphinx import PocketSphinxWrap, PocketSphinxConfig
 
 
 class Recognizer(object):
@@ -56,14 +55,13 @@ class Recognizer(object):
             if self._hotword_detector.is_hotword(frames):
                 return True
 
-    def read_phrase(self, stream: Stream, timeout_sec=20) -> AudioData:
+    def read_phrase(self, stream: Stream, timeout_sec=20) -> bool:
         timeout_periods = int(timeout_sec * 1000.0 / self._time_read_ms)
         assert timeout_periods > self._timeout_before_phrase_periods, 'Invalid arg "timeout_sec"'
 
-        settings = stream.get_settings()
-        frames_read = self._calc_frames_read(stream)
         voice = []
         speech_detect_buffer = collections.deque(maxlen=self._speech_detect_buffer_maxlen)
+        frames_read = self._calc_frames_read(stream)
         state_speech = False
         phrase_started = False
         state_cnt = 0
@@ -71,7 +69,7 @@ class Recognizer(object):
         for _ in range(timeout_periods):
             frames = stream.read(frames_read)
             if len(frames) == 0:
-                return None
+                return False
 
             voice.append(frames)
             speech_detect_buffer.append(self._snowboy.is_speech(frames))
@@ -84,29 +82,33 @@ class Recognizer(object):
                 if speech_detect_buffer.count(True) > self._speech_detect_threshold:
                     if not phrase_started:
                         phrase_started = True
-                        voice = voice[state_cnt - speech_detect_buffer.maxlen:]
+                        self._recognizer.recognize_start(stream.get_settings())
+                        self._recognizer.recognize_add_frames(voice[-speech_detect_buffer.maxlen:])
+                        voice = []
                     state_cnt = 1
                     state_speech = True
             else:
                 if speech_detect_buffer.count(False) > self._speech_detect_threshold:
+                    self._recognizer.recognize_add_frames(voice[:-1])
+                    voice = voice[-1:]
                     state_cnt = 1
                     state_speech = False
 
             # timeout before phrase
             if not phrase_started and self._timeout_before_phrase_periods <= state_cnt:
-                return None
+                return False
 
             # timeout after phrase
             if (phrase_started
                     and not state_speech
                     and self._timeout_after_phrase_periods <= state_cnt):
-                return AudioData(b''.join(voice[:-state_cnt]), settings)
+                return True
 
         # total timeout
         if state_speech:
-            return AudioData(b''.join(voice), settings)
-        else:
-            return AudioData(b''.join(voice[:-state_cnt]), settings)
+            self._recognizer.recognize_add_frames(voice)
 
-    def recognize(self, audio_date: AudioData):
-        return self._recognizer.recognize(audio_date)
+        return True
+
+    def recognize(self):
+        return self._recognizer.recognize_finish()
