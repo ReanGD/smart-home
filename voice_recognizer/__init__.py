@@ -7,3 +7,4 @@ from voice_recognizer.wrap_pocketsphinx import PocketSphinxConfig, PocketSphinxW
 from voice_recognizer.recognizer import Recognizer
 
 from voice_recognizer.wrappers.yandex import YandexConfig
+from voice_recognizer.wrappers.raw import RawConfig

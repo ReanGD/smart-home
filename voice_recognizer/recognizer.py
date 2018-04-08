@@ -22,12 +22,14 @@ class Recognizer(object):
         timeout_before_phrase_ms = 3 * 1000
         timeout_after_phrase_ms = 2 * 1000
         timeout_speech_detect_ms = 500
+        timeout_add_to_start_ms = 200
         speech_detect_ratio = 0.9
         self._time_read_ms = 40
 
         # tmp values
         self._timeout_before_phrase_steps = int(timeout_before_phrase_ms / self._time_read_ms)
         self._timeout_after_phrase_steps = int(timeout_after_phrase_ms / self._time_read_ms)
+        self._timeout_add_to_start_steps = int(timeout_add_to_start_ms / self._time_read_ms)
         self._speech_detect_buffer_maxlen = int(timeout_speech_detect_ms / self._time_read_ms)
         self._speech_detect_threshold = speech_detect_ratio * self._speech_detect_buffer_maxlen
 
@@ -78,7 +80,8 @@ class Recognizer(object):
                 return False
 
         self._recognizer.recognize_start(stream.get_settings())
-        voice = voice[-speech_detect_buffer.maxlen:]
+        start_period = min(speech_detect_buffer.maxlen + self._timeout_add_to_start_steps, step)
+        voice = voice[-start_period:]
         silent_step = 0
         state_speech = True
         for _ in range(step, timeout_steps):

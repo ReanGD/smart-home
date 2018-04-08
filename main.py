@@ -66,7 +66,9 @@ def test_voice_recognition():
     manager = vr.Device()
     pixel_ring.off()
     try:
-        recognizer = vr.Recognizer(config.yandex, config.snowboy, config.pocket_sphinx)
+        recognizer_settings = config.yandex
+        # recognizer_settings = vr.RawConfig()
+        recognizer = vr.Recognizer(recognizer_settings, config.snowboy, config.pocket_sphinx)
         settings = recognizer.get_audio_settings(manager, device_index=None)
         print("settings: {}".format(settings))
         mic = manager.create_microphone_stream(settings)
@@ -85,6 +87,8 @@ def test_voice_recognition():
         print("start send...")
         pixel_ring.wait()
         result = recognizer.recognize()
+
+        # result.save_as_wav("record.wav")
         if result is not None and 'включи музыку' in result:
             play()
         print(result)

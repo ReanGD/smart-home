@@ -10,6 +10,9 @@ class AudioData(object):
         self._raw_data = raw_data
         self._in_settings = in_settings
 
+    def add_raw_data(self, raw_data):
+        self._raw_data += raw_data
+
     def get_raw_data(self, out_settings: StreamSettings=None):
         if out_settings is None:
             return self._raw_data
