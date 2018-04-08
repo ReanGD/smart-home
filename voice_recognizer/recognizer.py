@@ -26,8 +26,8 @@ class Recognizer(object):
         self._time_read_ms = 40
 
         # tmp values
-        self._timeout_before_phrase_periods = int(timeout_before_phrase_ms / self._time_read_ms)
-        self._timeout_after_phrase_periods = int(timeout_after_phrase_ms / self._time_read_ms)
+        self._timeout_before_phrase_steps = int(timeout_before_phrase_ms / self._time_read_ms)
+        self._timeout_after_phrase_steps = int(timeout_after_phrase_ms / self._time_read_ms)
         self._speech_detect_buffer_maxlen = int(timeout_speech_detect_ms / self._time_read_ms)
         self._speech_detect_threshold = speech_detect_ratio * self._speech_detect_buffer_maxlen
 
@@ -56,52 +56,55 @@ class Recognizer(object):
                 return True
 
     def read_phrase(self, stream: Stream, timeout_sec=20) -> bool:
-        timeout_periods = int(timeout_sec * 1000.0 / self._time_read_ms)
-        assert timeout_periods > self._timeout_before_phrase_periods, 'Invalid arg "timeout_sec"'
+        timeout_steps = int(timeout_sec * 1000.0 / self._time_read_ms)
+        assert timeout_steps > self._timeout_before_phrase_steps, 'Invalid arg "timeout_sec"'
 
-        voice = []
         speech_detect_buffer = collections.deque(maxlen=self._speech_detect_buffer_maxlen)
         frames_read = self._calc_frames_read(stream)
-        state_speech = False
-        phrase_started = False
-        state_cnt = 0
 
-        for _ in range(timeout_periods):
+        voice = []
+        step = 0
+        while speech_detect_buffer.count(True) <= self._speech_detect_threshold:
             frames = stream.read(frames_read)
             if len(frames) == 0:
                 return False
 
             voice.append(frames)
             speech_detect_buffer.append(self._snowboy.is_speech(frames))
-            state_cnt += 1
+            step += 1
 
-            if len(speech_detect_buffer) < speech_detect_buffer.maxlen:
-                continue
+            # timeout before phrase
+            if step >= self._timeout_before_phrase_steps:
+                return False
+
+        self._recognizer.recognize_start(stream.get_settings())
+        voice = voice[-speech_detect_buffer.maxlen:]
+        silent_step = 0
+        state_speech = True
+        for _ in range(step, timeout_steps):
+            frames = stream.read(frames_read)
+            if len(frames) == 0:
+                return False
+
+            voice.append(frames)
+            speech_detect_buffer.append(self._snowboy.is_speech(frames))
 
             if not state_speech:
                 if speech_detect_buffer.count(True) > self._speech_detect_threshold:
-                    if not phrase_started:
-                        phrase_started = True
-                        self._recognizer.recognize_start(stream.get_settings())
-                        self._recognizer.recognize_add_frames(voice[-speech_detect_buffer.maxlen:])
-                        voice = []
-                    state_cnt = 1
                     state_speech = True
             else:
                 if speech_detect_buffer.count(False) > self._speech_detect_threshold:
-                    self._recognizer.recognize_add_frames(voice[:-1])
-                    voice = voice[-1:]
-                    state_cnt = 1
+                    self._recognizer.recognize_add_frames(voice)
+                    voice.clear()
                     state_speech = False
 
-            # timeout before phrase
-            if not phrase_started and self._timeout_before_phrase_periods <= state_cnt:
-                return False
+            if state_speech:
+                silent_step = 0
+            else:
+                silent_step += 1
 
             # timeout after phrase
-            if (phrase_started
-                    and not state_speech
-                    and self._timeout_after_phrase_periods <= state_cnt):
+            if silent_step >= self._timeout_after_phrase_steps:
                 return True
 
         # total timeout

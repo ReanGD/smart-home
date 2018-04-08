@@ -50,6 +50,18 @@ def test_vad():
         device.terminate()
 
 
+def play():
+    import soco
+    speakers = soco.discover()
+
+    # Display a list of speakers
+    for speaker in speakers:
+        print("%s (%s)" % (speaker.player_name, speaker.ip_address))
+
+    # Play a speaker
+    speakers.pop().play()
+
+
 def test_voice_recognition():
     manager = vr.Device()
     pixel_ring.off()
@@ -66,14 +78,15 @@ def test_voice_recognition():
 
         pixel_ring.set_volume(12)
         print("start record...")
-        data = recognizer.read_phrase(mic)
-        if data is None:
-            print("error")
+        if not recognizer.read_phrase(mic):
+            print("error read phrase")
             return
 
         print("start send...")
         pixel_ring.wait()
-        result = recognizer.recognize(data)
+        result = recognizer.recognize()
+        if result is not None and 'включи музыку' in result:
+            play()
         print(result)
     except KeyboardInterrupt:
         pass
@@ -89,6 +102,7 @@ def main():
     # test_record()
     # test_vad()
     test_voice_recognition()
+    # play()
     print("stop")
 
 
