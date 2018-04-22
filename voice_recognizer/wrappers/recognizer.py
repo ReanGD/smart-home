@@ -1,4 +1,4 @@
-from voice_recognizer.stream_settings import StreamSettings
+from ..stream_settings import StreamSettings
 
 
 class Recognizer(object):

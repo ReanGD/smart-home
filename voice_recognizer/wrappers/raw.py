@@ -1,6 +1,6 @@
-from voice_recognizer.stream_settings import StreamSettings
-from voice_recognizer.audio_data import AudioData
-from voice_recognizer.wrappers.recognizer import RecognizerSettings, Recognizer
+from ..stream_settings import StreamSettings
+from ..audio_data import AudioData
+from .recognizer import RecognizerSettings, Recognizer
 
 
 class Raw(Recognizer):

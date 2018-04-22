@@ -1,7 +1,7 @@
 import pyaudio
-from voice_recognizer.streams import MicrophoneStream, MicrophoneSavedStream, DataStream
-from voice_recognizer.stream_settings import StreamSettings
-from voice_recognizer.audio_data import AudioData
+from .streams import MicrophoneStream, MicrophoneSavedStream, DataStream
+from .stream_settings import StreamSettings
+from .audio_data import AudioData
 
 
 class Device(object):

@@ -1,10 +1,26 @@
-from voice_recognizer.device import Device
-from voice_recognizer.audio_data import AudioData
-from voice_recognizer.stream_settings import StreamSettings
-from voice_recognizer.streams import MicrophoneStream, MicrophoneSavedStream, DataStream
-from voice_recognizer.wrap_snowboy import SnowboyWrap, SnowboyConfig
-from voice_recognizer.wrap_pocketsphinx import PocketSphinxConfig, PocketSphinxWrap
-from voice_recognizer.recognizer import Recognizer
+from .device import Device
+from .audio_data import AudioData
+from .recognizer import Recognizer
+from .stream_settings import StreamSettings
+from .wrap_snowboy import SnowboyWrap, SnowboyConfig
+from .wrappers import YandexConfig, RawConfig, RecognizerSettings
+from .wrap_pocketsphinx import PocketSphinxConfig, PocketSphinxWrap
+from .streams import MicrophoneStream, MicrophoneSavedStream, DataStream
 
-from voice_recognizer.wrappers.yandex import YandexConfig
-from voice_recognizer.wrappers.raw import RawConfig
+
+__all__ = [
+    'Device',
+    'AudioData',
+    'StreamSettings',
+    'MicrophoneStream',
+    'MicrophoneSavedStream',
+    'DataStream',
+    'SnowboyWrap',
+    'SnowboyConfig',
+    'PocketSphinxConfig',
+    'PocketSphinxWrap',
+    'Recognizer',
+    'YandexConfig',
+    'RawConfig',
+    'RecognizerSettings',
+]

@@ -1,7 +1,7 @@
 import http.client
 import xml.etree.ElementTree
-from voice_recognizer.stream_settings import StreamSettings
-from voice_recognizer.wrappers.recognizer import RecognizerSettings, Recognizer
+from ..stream_settings import StreamSettings
+from .recognizer import RecognizerSettings, Recognizer
 
 
 class Yandex(Recognizer):
