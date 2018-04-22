@@ -4,7 +4,7 @@ from soco.xml import XML
 from soco.exceptions import MusicServiceException
 from soco.music_services import MusicService, Account
 from soco.soap import SoapFault, SoapMessage
-from soco.data_structures import DidlObject, DidlResource
+from soco.data_structures import DidlObject, DidlResource, to_didl_string
 
 
 class MusicServiceSoapClient(object):
@@ -69,6 +69,11 @@ class MusicServiceSoapClient(object):
         return result if result is not None else {}
 
 
+class DidlContainerFolder(DidlObject):
+    item_class = 'object.container.storageFolder'
+    tag = 'container'
+
+
 class SonosSkill(object):
     def __init__(self, service_name, username, password):
         devices = list(soco.discover())
@@ -91,29 +96,20 @@ class SonosSkill(object):
             # it -> MSArtist
             metadata = self.music_service.get_metadata(it)
             top_track = metadata[1]
-            top_track_m = self.music_service.get_metadata(top_track, recursive=True)
-            # uri = self.music_service.get_media_uri(top_track.id)
-            # self.device.add_uri_to_queue(uri)
-            # self.device.add_to_queue(top_track)
-            # top_track_m_1 = self.music_service.get_extended_metadata(top_track.item_id)
-            # top_track_m = self.music_service.get_media_metadata(top_track.item_id)
-            # media_metadata = self.music_service.get_media_uri(top_track.item_id)
-            # print(media_metadata)
-            # for itt in metadata:
-            #     print(itt)
-            # self.device.add_to_queue(metadata[1])
-            for track in top_track_m:
-                # self.music_service.sonos_uri_from_id(track.id)
-                # self.device.add_to_queue(item, position, as_next)
-                # http://cdnt-proxy-a.deezer.com/api/1/a08c68e3c372f615205b47493824d362dc49306a2d96453393129c3d1a3c3310f97aaece9e58a08dd9a69708680d98153a17c72b11fc046d7bda2ea075099d1ad731d88e21bb74b04cd3152bbd5baab5.mp3?hdnea=exp=1524358795~acl=/api/1/a08c68e3c372f615205b47493824d362dc49306a2d96453393129c3d1a3c3310f97aaece9e58a08dd9a69708680d98153a17c72b11fc046d7bda2ea075099d1ad731d88e21bb74b04cd3152bbd5baab5.mp3*~hmac=91eb314fc7e5ea131faed4e068d66edd81fdcaf063b2842e1e69e867d681b216&
-                # 'soco://0ffffffftr%253A102529062?sid=2&sn='
-                uri = self.music_service.get_media_uri(track.item_id)
-                print(track.uri)
-                print(uri)
-                self.device.add_uri_to_queue(uri)
-                self.device.add_uri_to_queue('soco://0ffffffftr%253A102529062?sid=2&sn=')
-                # res = [DidlResource(uri=uri, protocol_info="x-rincon-playlist:*:*:*")]
-                # item = DidlObject(resources=res, title='', parent_id='', item_id='')
-                # position = 0
-                # as_next = False
-                # self.device.add_to_queue(item, position, as_next)
+
+            uri = "x-rincon-cpcontainer:100f006c" + top_track.id
+            position = 0
+            as_next = True
+
+            parent_id = '1008006c' + it.id
+            item_id = '100f006c' + top_track.id
+            restricted = False
+            protocol_info = "x-rincon-cpcontainer:*:*:*"
+            title = top_track.title
+            res = [DidlResource(uri=uri, protocol_info=protocol_info)]
+            item = DidlContainerFolder(resources=res, title=title, parent_id=parent_id, item_id=item_id, restricted=restricted, desc='SA_RINCON519_0')
+            print(to_didl_string(item))
+
+            self.device.add_to_queue(item, position, as_next)
+            self.device.play()
+
