@@ -4,6 +4,7 @@ import vad_test
 import config
 import wrap_speech_recognition
 import voice_recognizer as vr
+from skills import Skills
 from respeaker.pixel_ring import pixel_ring
 
 
@@ -99,9 +100,9 @@ def test_voice_recognition():
         manager.terminate()
 
 
-def sonos():
-    skill = config.sonos.create_skill()
-    print(skill.run('Наутилус'))
+def skills():
+    obj = Skills(config.skills)
+    print(obj.run('Наутилус'))
 
 
 def main():
@@ -112,7 +113,7 @@ def main():
     # test_vad()
     # test_voice_recognition()
     # play()
-    sonos()
+    skills()
     print("stop")
 
 
