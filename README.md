@@ -10,7 +10,7 @@ pacaur -S python-snowboy
 
 pip3 install pyaudio respeaker webrtcvad pocketsphinx
 
-pip3 install requests. soco
+pip3 install requests soco
 
 pyusb
 -----

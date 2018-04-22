@@ -14,7 +14,7 @@ class DidlCustom(DidlObject):
     )
 
 
-class SonosApi(object):
+class Client(object):
     def __init__(self, service_name, username, password):
         devices = list(soco.discover())
         assert len(devices) != 0, 'Not found sonos devices'
@@ -55,7 +55,7 @@ class SonosApi(object):
         items = [item for item in metadata
                  if item.item_type == 'container' and 'can_play' in item.metadata]
         assert len(items) == 1, 'Len items can be 0'
-        return SonosApi._get_didl(items[0], search_item.id)
+        return Client._get_didl(items[0], search_item.id)
 
     def search(self, category, term):
         for it in self.music_service.search(category=category, term=term, index=0, count=100):

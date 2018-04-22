@@ -1,14 +1,24 @@
-from .api import SonosApi
+from .client import Client
 
 
-class SonosSkill(object):
-    def __init__(self, service_name, username, password):
-        self._api = SonosApi(service_name, username, password)
+class Sonos(object):
+    def __init__(self, settings):
+        self._client = Client(settings.service_name, settings.username, settings.password)
 
     def run(self, text):
-        didl = self._api.search('artists', text)
+        didl = self._client.search('artists', text)
         if didl is None:
             return False
 
-        self._api.play(didl)
+        self._client.play(didl)
         return True
+
+
+class SonosConfig(object):
+    def __init__(self, service_name, username, password):
+        self.service_name = service_name
+        self.username = username
+        self.password = password
+
+    def create_skill(self):
+        return Sonos(self)

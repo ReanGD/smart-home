@@ -99,14 +99,20 @@ def test_voice_recognition():
         manager.terminate()
 
 
+def sonos():
+    skill = config.sonos.create_skill()
+    print(skill.run('Наутилус'))
+
+
 def main():
     print("start")
     # run_speech_recognition()
     # print_list()
     # test_record()
     # test_vad()
-    test_voice_recognition()
+    # test_voice_recognition()
     # play()
+    sonos()
     print("stop")
 
 
