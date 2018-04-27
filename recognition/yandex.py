@@ -1,7 +1,9 @@
 from http.client import HTTPSConnection
 from xml.etree.ElementTree import fromstring
+from pyaudio import paInt16
 from audio import StreamSettings
 from .base import PhraseRecognizer, PhraseRecognizerConfig
+from .audio_settings import AudioSettings
 
 
 class Yandex(PhraseRecognizer):
@@ -11,6 +13,10 @@ class Yandex(PhraseRecognizer):
         self._recognize_url = config.get_url()
         self._data_settings = None
         self._conn = None
+        self._audio_settings = AudioSettings(channels=1, sample_format=paInt16, sample_rate=16000)
+
+    def get_audio_settings(self) -> AudioSettings:
+        return self._audio_settings
 
     def recognize_start(self, data_settings: StreamSettings):
         self._data_settings = data_settings

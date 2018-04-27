@@ -1,6 +1,7 @@
 from collections import deque
 from audio import Device, StreamSettings, Stream
 from .base import PhraseRecognizerConfig, HotwordRecognizerConfig, VADRecognizerConfig
+from .audio_settings import get_common_settings
 
 
 class Listener(object):
@@ -27,11 +28,11 @@ class Listener(object):
         self._speech_detect_buffer_maxlen = int(timeout_speech_detect_ms / self._time_read_ms)
         self._speech_detect_threshold = speech_detect_ratio * self._speech_detect_buffer_maxlen
 
-    def get_audio_settings(self,
-                           device: Device,
-                           device_index=None,
-                           frames_per_buffer=2048) -> StreamSettings:
-        return self._vad_recognizer.get_audio_settings(device, device_index, frames_per_buffer)
+    def get_stream_settings(self, device: Device, device_index: int=None) -> StreamSettings:
+        settings = [self._hotword_recognizer.get_audio_settings(),
+                    self._vad_recognizer.get_audio_settings(),
+                    self._phrase_recognizer.get_audio_settings()]
+        return get_common_settings(device, device_index, settings)
 
     def _calc_frames_read(self, stream: Stream):
         frames_read = stream.get_settings().get_frames_count_by_duration_ms(self._time_read_ms)

@@ -1,9 +1,13 @@
 from audio.stream_settings import StreamSettings
+from .audio_settings import AudioSettings
 
 
 class PhraseRecognizer(object):
     def __init__(self, config):
         self._config = config
+
+    def get_audio_settings(self) -> AudioSettings:
+        raise Exception('Not implemented "get_audio_settings"')
 
     def recognize_start(self, data_settings: StreamSettings):
         raise Exception('Not implemented "recognize_start"')
@@ -19,6 +23,9 @@ class HotwordRecognizer(object):
     def __init__(self, config):
         self._config = config
 
+    def get_audio_settings(self) -> AudioSettings:
+        raise Exception('Not implemented "get_audio_settings"')
+
     def is_hotword(self, raw_frames) -> bool:
         raise Exception('Not implemented "is_hotword"')
 
@@ -26,6 +33,9 @@ class HotwordRecognizer(object):
 class VADRecognizer(object):
     def __init__(self, config):
         self._config = config
+
+    def get_audio_settings(self) -> AudioSettings:
+        raise Exception('Not implemented "get_audio_settings"')
 
     def is_speech(self, raw_frames) -> bool:
         raise Exception('Not implemented "is_speech"')

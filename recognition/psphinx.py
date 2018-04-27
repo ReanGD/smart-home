@@ -1,13 +1,19 @@
 from os import devnull
 from pocketsphinx.pocketsphinx import Decoder
 from .base import HotwordRecognizer, HotwordRecognizerConfig
+from .audio_settings import AudioSettings
 
 
 class Pocketsphinx(HotwordRecognizer):
     def __init__(self, config):
         super().__init__(config)
         self._decoder = Pocketsphinx._create_decoder(config)
+        sample_rate = int(self._decoder.get_config().get_float('-samprate'))
+        self._audio_settings = AudioSettings(channels=1, sample_rate=sample_rate)
         self._is_start = False
+
+    def get_audio_settings(self) -> AudioSettings:
+        return self._audio_settings
 
     @staticmethod
     def _create_decoder(config) -> Decoder:

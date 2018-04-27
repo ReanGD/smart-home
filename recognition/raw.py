@@ -1,11 +1,15 @@
 from audio import StreamSettings, AudioData
 from .base import PhraseRecognizer, PhraseRecognizerConfig
+from .audio_settings import AudioSettings
 
 
 class Raw(PhraseRecognizer):
     def __init__(self, config):
         super().__init__(config)
         self._audio_data = None
+
+    def get_audio_settings(self) -> AudioSettings:
+        return AudioSettings()
 
     def recognize_start(self, data_settings: StreamSettings):
         self._audio_data = AudioData(b'', data_settings)
