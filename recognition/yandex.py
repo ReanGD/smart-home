@@ -1,5 +1,5 @@
-import http.client
-import xml.etree.ElementTree
+from http.client import HTTPSConnection
+from xml.etree.ElementTree import fromstring
 from audio import StreamSettings
 from .base import PhraseRecognizer, PhraseRecognizerConfig
 
@@ -16,7 +16,7 @@ class Yandex(PhraseRecognizer):
         self._data_settings = data_settings
 
         skips = {}
-        self._conn = http.client.HTTPSConnection(self._recognize_host)
+        self._conn = HTTPSConnection(self._recognize_host)
         self._conn.putrequest('POST', self._recognize_url, **skips)
         self._conn.putheader('Transfer-Encoding', 'chunked')
         self._conn.putheader('Content-Type', 'audio/x-pcm;bit=16;rate=16000')
@@ -35,7 +35,7 @@ class Yandex(PhraseRecognizer):
             return None
 
         data = res.read()
-        root = xml.etree.ElementTree.fromstring(data.decode("utf-8"))
+        root = fromstring(data.decode("utf-8"))
         if root.attrib['success'] == '0':
             return []
 

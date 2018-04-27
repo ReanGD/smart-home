@@ -1,4 +1,4 @@
-import collections
+from collections import deque
 from audio import Device, StreamSettings, Stream
 from .base import PhraseRecognizerConfig, HotwordRecognizerConfig, VADRecognizerConfig
 
@@ -7,7 +7,7 @@ class Listener(object):
     def __init__(self, hotword_recognizer_cfg: HotwordRecognizerConfig,
                  vad_recognizer_cfg: VADRecognizerConfig,
                  phrase_recognizer_cfg: PhraseRecognizerConfig):
-        self._stream = None
+
         self._hotword_recognizer = hotword_recognizer_cfg.create_hotword_recognizer()
         self._vad_recognizer = vad_recognizer_cfg.create_vad_recognizer()
         self._phrase_recognizer = phrase_recognizer_cfg.create_phrase_recognizer()
@@ -55,7 +55,7 @@ class Listener(object):
         timeout_steps = int(timeout_sec * 1000.0 / self._time_read_ms)
         assert timeout_steps > self._timeout_before_phrase_steps, 'Invalid arg "timeout_sec"'
 
-        speech_detect_buffer = collections.deque(maxlen=self._speech_detect_buffer_maxlen)
+        speech_detect_buffer = deque(maxlen=self._speech_detect_buffer_maxlen)
         frames_read = self._calc_frames_read(stream)
 
         voice = []

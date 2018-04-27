@@ -1,4 +1,4 @@
-import os
+from os import devnull
 from pocketsphinx.pocketsphinx import Decoder
 from .base import HotwordRecognizer, HotwordRecognizerConfig
 
@@ -17,7 +17,7 @@ class Pocketsphinx(HotwordRecognizer):
         decoder_config.set_string('-dict', config.dict)
         decoder_config.set_string('-keyphrase', config.hotword)
         decoder_config.set_float('-kws_threshold', config.threshold)
-        decoder_config.set_string('-logfn', os.devnull)
+        decoder_config.set_string('-logfn', devnull)
 
         return Decoder(decoder_config)
 

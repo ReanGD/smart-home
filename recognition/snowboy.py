@@ -1,14 +1,13 @@
-import pyaudio
+from pyaudio import get_format_from_width
 from audio import Device, StreamSettings
-import external.snowboy.snowboydetect as snowboydetect
+from external.snowboy.snowboydetect import SnowboyDetect
 from .base import HotwordRecognizer, VADRecognizer, HotwordRecognizerConfig, VADRecognizerConfig
 
 
 class Snowboy(HotwordRecognizer, VADRecognizer):
     def __init__(self, config):
         super().__init__(config)
-        self._detector = snowboydetect.SnowboyDetect(config.resource_path.encode(),
-                                                     config.model_path.encode())
+        self._detector = SnowboyDetect(config.resource_path.encode(), config.model_path.encode())
         self.set_sensitivity(self._config.sensitivity)
         self.set_audio_gain(self._config.audio_gain)
 
@@ -33,7 +32,7 @@ class Snowboy(HotwordRecognizer, VADRecognizer):
                            frames_per_buffer=2048) -> StreamSettings:
 
         channels = self._detector.NumChannels()
-        sample_format = pyaudio.get_format_from_width(self._detector.BitsPerSample() / 8)
+        sample_format = get_format_from_width(self._detector.BitsPerSample() / 8)
         sample_rate = self._detector.SampleRate()
 
         return StreamSettings(device,
