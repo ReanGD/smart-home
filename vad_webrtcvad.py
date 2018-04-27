@@ -1,7 +1,7 @@
 import pyaudio
 import vad_utils
 import webrtcvad
-import voice_recognizer as vr
+import audio as vr
 
 
 class VadWrap(vad_utils.VadBase):

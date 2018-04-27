@@ -1,7 +1,7 @@
 import os
-from voice_recognizer import PocketSphinxConfig
+from audio import PocketSphinxConfig
 from pocketsphinx.pocketsphinx import Decoder
-import voice_recognizer as vr
+import audio as vr
 
 
 def _get_pocket_sphinx() -> PocketSphinxConfig:

@@ -1,5 +1,5 @@
 import collections
-import voice_recognizer as vr
+import audio as vr
 
 
 class VadBase(object):

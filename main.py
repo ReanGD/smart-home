@@ -3,7 +3,7 @@ import vad_snowboy
 import vad_test
 import config
 import wrap_speech_recognition
-import voice_recognizer as vr
+import audio as vr
 import pocketsphinx_test
 from skills import Skills
 from respeaker.pixel_ring import pixel_ring

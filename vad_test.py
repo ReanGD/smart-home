@@ -3,7 +3,7 @@ import pyaudio
 import audioop
 import vad_utils
 import numpy as np
-import voice_recognizer as vr
+import audio as vr
 import matplotlib.pyplot as plt
 
 

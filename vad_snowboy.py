@@ -1,5 +1,5 @@
 import vad_utils
-import voice_recognizer as vr
+import audio as vr
 import config
 
 
