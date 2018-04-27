@@ -1,11 +1,11 @@
-import vad_webrtcvad
-import vad_snowboy
-import vad_test
+# import vad_webrtcvad
+# import vad_snowboy
+# import vad_test
+# import pocketsphinx_test
 import config
 import wrap_speech_recognition
 import audio
-import recognition
-import pocketsphinx_test
+from recognition import Listener
 from skills import Skills
 from respeaker.pixel_ring import pixel_ring
 
@@ -66,15 +66,15 @@ def play():
 
 
 def test_voice_recognition():
-    manager = audio.Device()
+    device = audio.Device()
     pixel_ring.off()
     try:
         recognizer_settings = config.yandex
         # recognizer_settings = vr.RawConfig()
-        recognizer = recognition.Listener(recognizer_settings, config.snowboy, config.pocket_sphinx)
-        settings = recognizer.get_audio_settings(manager, device_index=None)
+        recognizer = Listener(config.pocket_sphinx, config.snowboy, recognizer_settings)
+        settings = recognizer.get_stream_settings(device, device_index=None)
         print("settings: {}".format(settings))
-        mic = manager.create_microphone_stream(settings)
+        mic = device.create_microphone_stream(settings)
 
         print("start wait hotword...")
         if not recognizer.wait_hotword(mic):
@@ -99,7 +99,7 @@ def test_voice_recognition():
         pass
     finally:
         pixel_ring.off()
-        manager.terminate()
+        device.terminate()
 
 
 def skills():
@@ -113,10 +113,10 @@ def main():
     # print_list()
     # test_record()
     # test_vad()
-    # test_voice_recognition()
+    test_voice_recognition()
     # play()
     # skills()
-    pocketsphinx_test.run()
+    # pocketsphinx_test.run()
     print("stop")
 
 

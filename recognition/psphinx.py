@@ -51,5 +51,5 @@ class PocketsphinxConfig(HotwordRecognizerConfig):
         self.hotword = hotword
         self.threshold = threshold
 
-    def create_phrase_recognizer(self):
+    def create_hotword_recognizer(self):
         return Pocketsphinx(self)
