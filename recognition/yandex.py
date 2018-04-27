@@ -1,14 +1,14 @@
 import http.client
 import xml.etree.ElementTree
-from ..stream_settings import StreamSettings
-from .recognizer import RecognizerSettings, Recognizer
+from audio import StreamSettings
+from .base import PhraseRecognizer, PhraseRecognizerConfig
 
 
-class Yandex(Recognizer):
-    def __init__(self, settings):
-        super().__init__(settings)
-        self._recognize_host = settings.host
-        self._recognize_url = settings.get_url()
+class Yandex(PhraseRecognizer):
+    def __init__(self, config):
+        super().__init__(config)
+        self._recognize_host = config.host
+        self._recognize_url = config.get_url()
         self._data_settings = None
         self._conn = None
 
@@ -42,7 +42,7 @@ class Yandex(Recognizer):
         return [child.text for child in root]
 
 
-class YandexConfig(RecognizerSettings):
+class YandexConfig(PhraseRecognizerConfig):
     def __init__(self, key, user_uuid, topic='queries', lang='ru-RU', disable_antimat=True):
         self.key = key
         self.user_uuid = user_uuid
@@ -51,7 +51,7 @@ class YandexConfig(RecognizerSettings):
         self.disable_antimat = disable_antimat
         self.host = 'asr.yandex.net'
 
-    def create_recognizer(self):
+    def create_phrase_recognizer(self):
         return Yandex(self)
 
     def get_url(self):

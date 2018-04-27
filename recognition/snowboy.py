@@ -1,27 +1,16 @@
 import pyaudio
-from .device import Device
-from .stream_settings import StreamSettings
+from audio import Device, StreamSettings
 import external.snowboy.snowboydetect as snowboydetect
+from .base import HotwordRecognizer, VADRecognizer, HotwordRecognizerConfig, VADRecognizerConfig
 
 
-class SnowboyConfig(object):
-    def __init__(self, resource_path, model_path, sensitivity=0.5, audio_gain=1.0):
-        self.resource_path = resource_path
-        self.model_path = model_path
-        self.sensitivity = sensitivity
-        self.audio_gain = audio_gain
-
-
-class SnowboyWrap(object):
-    def __init__(self, config: SnowboyConfig):
-        self._config = config
+class Snowboy(HotwordRecognizer, VADRecognizer):
+    def __init__(self, config):
+        super().__init__(config)
         self._detector = snowboydetect.SnowboyDetect(config.resource_path.encode(),
                                                      config.model_path.encode())
         self.set_sensitivity(self._config.sensitivity)
         self.set_audio_gain(self._config.audio_gain)
-
-    def get_config(self):
-        return self._config
 
     def set_audio_gain(self, value):
         self._config.audio_gain = value
@@ -54,13 +43,34 @@ class SnowboyWrap(object):
                               sample_rate=sample_rate,
                               frames_per_buffer=frames_per_buffer)
 
-    def detect(self, frames):
-        result = self._detector.RunDetection(frames)
+    def detect(self, raw_frames):
+        result = self._detector.RunDetection(raw_frames)
         assert result != -1, "Error initializing streams or reading audio data"
         return result
 
-    def is_hotword(self, frames):
-        return self.detect(frames) > 0
+    def is_hotword(self, raw_frames):
+        return self.detect(raw_frames) > 0
 
-    def is_speech(self, frames):
-        return self.detect(frames) >= 0
+    def is_speech(self, raw_frames):
+        return self.detect(raw_frames) >= 0
+
+
+class SnowboyConfig(HotwordRecognizerConfig, VADRecognizerConfig):
+    def __init__(self, resource_path, model_path, sensitivity=0.5, audio_gain=1.0):
+        self.resource_path = resource_path
+        self.model_path = model_path
+        self.sensitivity = sensitivity
+        self.audio_gain = audio_gain
+        self._cache = None
+
+    def create_hotword_recognizer(self):
+        if self._cache is None:
+            self._cache = Snowboy(self)
+
+        return self._cache
+
+    def create_vad_recognizer(self):
+        if self._cache is None:
+            self._cache = Snowboy(self)
+
+        return self._cache

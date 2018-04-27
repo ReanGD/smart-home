@@ -1,11 +1,10 @@
-from ..stream_settings import StreamSettings
-from ..audio_data import AudioData
-from .recognizer import RecognizerSettings, Recognizer
+from audio import StreamSettings, AudioData
+from .base import PhraseRecognizer, PhraseRecognizerConfig
 
 
-class Raw(Recognizer):
-    def __init__(self, settings):
-        super().__init__(settings)
+class Raw(PhraseRecognizer):
+    def __init__(self, config):
+        super().__init__(config)
         self._audio_data = None
 
     def recognize_start(self, data_settings: StreamSettings):
@@ -18,9 +17,9 @@ class Raw(Recognizer):
         return self._audio_data
 
 
-class RawConfig(RecognizerSettings):
+class RawConfig(PhraseRecognizerConfig):
     def __init__(self):
         pass
 
-    def create_recognizer(self):
+    def create_phrase_recognizer(self):
         return Raw(self)

@@ -71,7 +71,7 @@ def test_voice_recognition():
     try:
         recognizer_settings = config.yandex
         # recognizer_settings = vr.RawConfig()
-        recognizer = recognition.Recognizer(recognizer_settings, config.snowboy, config.pocket_sphinx)
+        recognizer = recognition.Listener(recognizer_settings, config.snowboy, config.pocket_sphinx)
         settings = recognizer.get_audio_settings(manager, device_index=None)
         print("settings: {}".format(settings))
         mic = manager.create_microphone_stream(settings)

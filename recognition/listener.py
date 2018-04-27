@@ -1,18 +1,16 @@
 import collections
-from audio import (Device, StreamSettings, Stream, RecognizerSettings, SnowboyWrap, SnowboyConfig,
-                   PocketSphinxWrap, PocketSphinxConfig)
+from audio import Device, StreamSettings, Stream
+from .base import PhraseRecognizerConfig, HotwordRecognizerConfig, VADRecognizerConfig
 
 
-class Recognizer(object):
-    def __init__(self, recognizer_settings: RecognizerSettings, snowboy_config: SnowboyConfig,
-                 pocket_sphinx_config: PocketSphinxConfig=None):
+class Listener(object):
+    def __init__(self, hotword_recognizer_cfg: HotwordRecognizerConfig,
+                 vad_recognizer_cfg: VADRecognizerConfig,
+                 phrase_recognizer_cfg: PhraseRecognizerConfig):
         self._stream = None
-        self._recognizer = recognizer_settings.create_recognizer()
-        self._snowboy = SnowboyWrap(snowboy_config)
-        if pocket_sphinx_config is not None:
-            self._hotword_detector = PocketSphinxWrap(pocket_sphinx_config)
-        else:
-            self._hotword_detector = self._snowboy
+        self._hotword_recognizer = hotword_recognizer_cfg.create_hotword_recognizer()
+        self._vad_recognizer = vad_recognizer_cfg.create_vad_recognizer()
+        self._phrase_recognizer = phrase_recognizer_cfg.create_phrase_recognizer()
 
         # params
         timeout_before_phrase_ms = 3 * 1000
@@ -33,7 +31,7 @@ class Recognizer(object):
                            device: Device,
                            device_index=None,
                            frames_per_buffer=2048) -> StreamSettings:
-        return self._snowboy.get_audio_settings(device, device_index, frames_per_buffer)
+        return self._vad_recognizer.get_audio_settings(device, device_index, frames_per_buffer)
 
     def _calc_frames_read(self, stream: Stream):
         frames_read = stream.get_settings().get_frames_count_by_duration_ms(self._time_read_ms)
@@ -50,7 +48,7 @@ class Recognizer(object):
             if len(frames) == 0:
                 return False
 
-            if self._hotword_detector.is_hotword(frames):
+            if self._hotword_recognizer.is_hotword(frames):
                 return True
 
     def read_phrase(self, stream: Stream, timeout_sec=20) -> bool:
@@ -68,14 +66,14 @@ class Recognizer(object):
                 return False
 
             voice.append(frames)
-            speech_detect_buffer.append(self._snowboy.is_speech(frames))
+            speech_detect_buffer.append(self._vad_recognizer.is_speech(frames))
             step += 1
 
             # timeout before phrase
             if step >= self._timeout_before_phrase_steps:
                 return False
 
-        self._recognizer.recognize_start(stream.get_settings())
+        self._phrase_recognizer.recognize_start(stream.get_settings())
         start_period = min(speech_detect_buffer.maxlen + self._timeout_add_to_start_steps, step)
         voice = voice[-start_period:]
         silent_step = 0
@@ -86,14 +84,14 @@ class Recognizer(object):
                 return False
 
             voice.append(frames)
-            speech_detect_buffer.append(self._snowboy.is_speech(frames))
+            speech_detect_buffer.append(self._vad_recognizer.is_speech(frames))
 
             if not state_speech:
                 if speech_detect_buffer.count(True) > self._speech_detect_threshold:
                     state_speech = True
             else:
                 if speech_detect_buffer.count(False) > self._speech_detect_threshold:
-                    self._recognizer.recognize_add_frames(voice)
+                    self._phrase_recognizer.recognize_add_frames(voice)
                     voice.clear()
                     state_speech = False
 
@@ -108,9 +106,9 @@ class Recognizer(object):
 
         # total timeout
         if state_speech:
-            self._recognizer.recognize_add_frames(voice)
+            self._phrase_recognizer.recognize_add_frames(voice)
 
         return True
 
     def recognize(self):
-        return self._recognizer.recognize_finish()
+        return self._phrase_recognizer.recognize_finish()
