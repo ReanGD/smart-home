@@ -5,9 +5,9 @@
 import config
 import wrap_speech_recognition
 import audio
-from recognition import Listener
 from skills import Skills
-from respeaker.pixel_ring import pixel_ring
+import experiments.voice_recognition
+import experiments.hotword
 
 
 def run_speech_recognition():
@@ -53,55 +53,6 @@ def test_vad():
         device.terminate()
 
 
-def play():
-    import soco
-    speakers = soco.discover()
-
-    # Display a list of speakers
-    for speaker in speakers:
-        print("%s (%s)" % (speaker.player_name, speaker.ip_address))
-
-    # Play a speaker
-    speakers.pop().play()
-
-
-def test_voice_recognition():
-    device = audio.Device()
-    pixel_ring.off()
-    try:
-        recognizer_settings = config.yandex
-        # recognizer_settings = vr.RawConfig()
-        recognizer = Listener(config.pocket_sphinx, config.snowboy, recognizer_settings)
-        settings = recognizer.get_stream_settings(device, device_index=None)
-        print("settings: {}".format(settings))
-        mic = device.create_microphone_stream(settings)
-
-        print("start wait hotword...")
-        if not recognizer.wait_hotword(mic):
-            print("error")
-            return
-
-        pixel_ring.set_volume(12)
-        print("start record...")
-        if not recognizer.read_phrase(mic):
-            print("error read phrase")
-            return
-
-        print("start send...")
-        pixel_ring.wait()
-        result = recognizer.recognize()
-
-        # result.save_as_wav("record.wav")
-        if result is not None and 'включи музыку' in result:
-            play()
-        print(result)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        pixel_ring.off()
-        device.terminate()
-
-
 def skills():
     obj = Skills(config.skills)
     print(obj.run('Наутилус'))
@@ -113,10 +64,10 @@ def main():
     # print_list()
     # test_record()
     # test_vad()
-    test_voice_recognition()
-    # play()
     # skills()
-    # pocketsphinx_test.run()
+
+    # experiments.voice_recognition.run()
+    experiments.hotword.run()
     print("stop")
 
 

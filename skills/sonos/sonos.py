@@ -19,9 +19,10 @@ class SonosConfig(object):
         self.service_name = service_name
         self.username = username
         self.password = password
+        self._name = 'sonos'
 
     def name(self):
-        return 'sonos'
+        return self._name
 
     def create_skill(self):
         return Sonos(self)

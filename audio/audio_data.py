@@ -1,7 +1,7 @@
-import io
 import wave
-import pyaudio
 import audioop
+from io import BytesIO
+from pyaudio import get_format_from_width
 from .stream_settings import StreamSettings
 
 
@@ -74,11 +74,11 @@ class AudioData(object):
     def load_as_wav(file, out_settings: StreamSettings):
         wav_reader = wave.open(file, "rb")
         try:
-            sample_format = pyaudio.get_format_from_width(wav_reader.getsampwidth())
+            sample_format = get_format_from_width(wav_reader.getsampwidth())
             in_settings = StreamSettings(out_settings.device,
-                                         channels = wav_reader.getnchannels(),
-                                         sample_rate = wav_reader.getframerate(),
-                                         sample_format = sample_format)
+                                         channels=wav_reader.getnchannels(),
+                                         sample_rate=wav_reader.getframerate(),
+                                         sample_format=sample_format)
             raw_data = wav_reader.readframes(wav_reader.getnframes())
             raw_data = AudioData(raw_data, in_settings).get_raw_data(out_settings)
             return AudioData(raw_data, out_settings)
@@ -98,6 +98,6 @@ class AudioData(object):
             wav_writer.close()
 
     def get_wav_data(self, out_settings: StreamSettings=None):
-        file = io.BytesIO()
+        file = BytesIO()
         self.save_as_wav(file, out_settings)
         return file.getvalue()

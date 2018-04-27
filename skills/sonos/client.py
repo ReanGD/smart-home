@@ -1,7 +1,7 @@
-import soco
-from .soap_client import MusicServiceSoapClient
+from soco import discover
 from soco.music_services import MusicService, Account
 from soco.data_structures import DidlObject, DidlResource
+from .soap_client import MusicServiceSoapClient
 
 
 class DidlCustom(DidlObject):
@@ -16,7 +16,7 @@ class DidlCustom(DidlObject):
 
 class Client(object):
     def __init__(self, service_name, username, password):
-        devices = list(soco.discover())
+        devices = list(discover())
         assert len(devices) != 0, 'Not found sonos devices'
         self.device = devices[0]
         account = Account()
