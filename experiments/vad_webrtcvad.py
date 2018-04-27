@@ -1,5 +1,5 @@
 import pyaudio
-import vad_utils
+from experiments import vad_utils
 import webrtcvad
 import audio as vr
 

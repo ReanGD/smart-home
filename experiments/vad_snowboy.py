@@ -1,4 +1,4 @@
-import vad_utils
+from experiments import vad_utils
 import audio as vr
 import config
 
