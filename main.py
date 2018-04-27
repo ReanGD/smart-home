@@ -4,6 +4,7 @@ import vad_test
 import config
 import wrap_speech_recognition
 import voice_recognizer as vr
+import pocketsphinx_test
 from skills import Skills
 from respeaker.pixel_ring import pixel_ring
 
@@ -27,7 +28,7 @@ def test_record():
 
     manager = vr.Device()
     try:
-        settings = vr.StreamSettings(manager, device_index=7)
+        settings = vr.StreamSettings(manager, device_index=None)
         print("settings: {}".format(settings))
         mic = manager.create_microphone_stream(settings)
 
@@ -113,7 +114,8 @@ def main():
     # test_vad()
     # test_voice_recognition()
     # play()
-    skills()
+    # skills()
+    pocketsphinx_test.run()
     print("stop")
 
 

@@ -3,11 +3,12 @@ from pocketsphinx.pocketsphinx import Decoder
 
 
 class PocketSphinxConfig(object):
-    def __init__(self, hmm, dict, lm, hotword):
+    def __init__(self, hmm, dict, lm, hotword, threshold):
         self.hmm = hmm
         self.dict = dict
         self.lm = lm
         self.hotword = hotword
+        self.threshold = threshold
 
 
 class PocketSphinxWrap(object):
@@ -19,8 +20,10 @@ class PocketSphinxWrap(object):
     def _create_decoder(self) -> Decoder:
         config = Decoder.default_config()
         config.set_string('-hmm', self._config.hmm)
-        config.set_string("-lm", self._config.lm)
+        # config.set_string("-lm", self._config.lm)
         config.set_string('-dict', self._config.dict)
+        config.set_string('-keyphrase', self._config.hotword)
+        config.set_float('-kws_threshold', self._config.threshold)
         config.set_string('-logfn', os.devnull)
 
         return Decoder(config)
