@@ -3,7 +3,8 @@ import vad_snowboy
 import vad_test
 import config
 import wrap_speech_recognition
-import audio as vr
+import audio
+import recognition
 import pocketsphinx_test
 from skills import Skills
 from respeaker.pixel_ring import pixel_ring
@@ -14,7 +15,7 @@ def run_speech_recognition():
 
 
 def print_list():
-    manager = vr.Device()
+    manager = audio.Device()
     try:
         for ind in range(manager.get_device_count()):
             print(manager.get_device_info_by_index(ind))
@@ -26,9 +27,9 @@ def print_list():
 def test_record():
     seconds = 15
 
-    manager = vr.Device()
+    manager = audio.Device()
     try:
-        settings = vr.StreamSettings(manager, device_index=None)
+        settings = audio.StreamSettings(manager, device_index=None)
         print("settings: {}".format(settings))
         mic = manager.create_microphone_stream(settings)
 
@@ -37,13 +38,13 @@ def test_record():
         data = b''.join([mic.read(settings.frames_per_buffer) for _ in range(step_cnt)])
         print("stop record...")
 
-        vr.AudioData(data, settings).save_as_wav("record.wav")
+        audio.AudioData(data, settings).save_as_wav("record.wav")
     finally:
         manager.terminate()
 
 
 def test_vad():
-    device = vr.Device()
+    device = audio.Device()
     try:
         vad_webrtcvad.run(device)
         vad_test.run(device)
@@ -65,12 +66,12 @@ def play():
 
 
 def test_voice_recognition():
-    manager = vr.Device()
+    manager = audio.Device()
     pixel_ring.off()
     try:
         recognizer_settings = config.yandex
         # recognizer_settings = vr.RawConfig()
-        recognizer = vr.Recognizer(recognizer_settings, config.snowboy, config.pocket_sphinx)
+        recognizer = recognition.Recognizer(recognizer_settings, config.snowboy, config.pocket_sphinx)
         settings = recognizer.get_audio_settings(manager, device_index=None)
         print("settings: {}".format(settings))
         mic = manager.create_microphone_stream(settings)

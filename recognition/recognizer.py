@@ -1,10 +1,6 @@
 import collections
-from .device import Device
-from .streams import Stream
-from .stream_settings import StreamSettings
-from .wrappers import RecognizerSettings
-from .wrap_snowboy import SnowboyWrap, SnowboyConfig
-from .wrap_pocketsphinx import PocketSphinxWrap, PocketSphinxConfig
+from audio import (Device, StreamSettings, Stream, RecognizerSettings, SnowboyWrap, SnowboyConfig,
+                   PocketSphinxWrap, PocketSphinxConfig)
 
 
 class Recognizer(object):
