@@ -11,7 +11,8 @@ def main():
     # device_info.run()
     # voice_recognition.run()
     # hotword.run()
-    # pocketsphinx_recognition.run()
+    # split_file.run()
+    pocketsphinx_recognition.run()
 
     print("stop")
 

@@ -7,4 +7,5 @@ __all__ = [
     'skills',
     'vad',
     'pocketsphinx_recognition',
+    'split_file',
     ]
