@@ -5,15 +5,26 @@ from respeaker import pixel_ring
 from recognition import Listener
 
 
-def play():
-    speakers = soco.discover()
+speakers = soco.discover()
+speaker = speakers.pop()
 
+
+def play():
     # Display a list of speakers
-    for speaker in speakers:
-        print("%s (%s)" % (speaker.player_name, speaker.ip_address))
+    # for speaker in speakers:
+    #     print("%s (%s)" % (speaker.player_name, speaker.ip_address))
 
     # Play a speaker
-    speakers.pop().play()
+    speaker.play()
+
+
+def stop():
+    # Display a list of speakers
+    # for speaker in speakers:
+    #     print("%s (%s)" % (speaker.player_name, speaker.ip_address))
+
+    # Stop a speaker
+    speaker.stop()
 
 
 def run():
@@ -27,25 +38,31 @@ def run():
         print("settings: {}".format(settings))
         mic = device.create_microphone_stream(settings)
 
-        print("start wait hotword...")
-        if not recognizer.wait_hotword(mic):
-            print("error")
-            return
+        while True:
+            print("start wait hotword...")
+            if not recognizer.wait_hotword(mic):
+                print("error")
+                return
 
-        pixel_ring.set_volume(12)
-        print("start record...")
-        if not recognizer.read_phrase(mic):
-            print("error read phrase")
-            return
+            pixel_ring.set_volume(12)
+            print("start record...")
+            if not recognizer.read_phrase(mic):
+                print("error read phrase")
+                return
 
-        print("start send...")
-        pixel_ring.wait()
-        result = recognizer.recognize()
+            print("start send...")
+            pixel_ring.wait()
+            result = recognizer.recognize()
 
-        # result.save_as_wav("record.wav")
-        if result is not None and 'включи музыку' in result:
-            play()
-        print(result)
+            # result.save_as_wav("record.wav")
+            print(result)
+            if result is not None:
+                if 'включи музыку' in result:
+                    play()
+                elif 'выключи музыку' in result:
+                    stop()
+            print(result)
+            pixel_ring.off()
     except KeyboardInterrupt:
         pass
     finally:
