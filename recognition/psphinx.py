@@ -21,15 +21,24 @@ class Pocketsphinx(HotwordRecognizer):
     def _create_decoder(config) -> Decoder:
         decoder_config = Decoder.default_config()
         decoder_config.set_string('-hmm', config.hmm)
-        if config.lm is not None:
-            decoder_config.set_string("-lm", config.lm)
-        else:
-            decoder_config.set_string('-keyphrase', config.hotword)
-            decoder_config.set_float('-kws_threshold', config.threshold)
         decoder_config.set_string('-dict', config.dict)
         decoder_config.set_boolean('-remove_noise', config.remove_noise)
         decoder_config.set_float('-samprate', config.sample_rate)
         decoder_config.set_string('-logfn', devnull)
+
+        if config.lm is not None:
+            decoder_config.set_string("-lm", config.lm)
+        elif len(config.hotwords) == 1:
+            decoder_config.set_string('-keyphrase', config.hotwords[0])
+            decoder_config.set_float('-kws_threshold', config.threshold)
+        else:
+            import os
+            from tempfile import gettempdir
+            path = os.path.join(gettempdir(), 'keywords.mini')
+            f = open(path, 'w')
+            f.writelines(['{} /{}/\n'.format(w, config.threshold) for w in config.hotwords])
+            f.flush()
+            decoder_config.set_string('-kws', path)
 
         return Decoder(decoder_config)
 
@@ -41,20 +50,22 @@ class Pocketsphinx(HotwordRecognizer):
         self._decoder.process_raw(raw_frames, False, False)
         hypothesis = self._decoder.hyp()
         if hypothesis:
-            if hypothesis.hypstr.find(self._config.hotword) >= 0:
-                self._decoder.end_utt()
-                self._is_start = False
-                return True
+            self._decoder.end_utt()
+            self._is_start = False
+            return True
 
         return False
 
 
 class PocketsphinxConfig(HotwordRecognizerConfig):
-    def __init__(self, hmm, dict, lm, hotword, threshold, sample_rate, remove_noise):
+    def __init__(self, hmm, dict, lm, hotwords, threshold, sample_rate, remove_noise):
         self.hmm = hmm
         self.dict = dict
         self.lm = lm
-        self.hotword = hotword
+        if isinstance(hotwords, list):
+            self.hotwords = hotwords
+        else:
+            self.hotwords = [hotwords]
         self.threshold = threshold
         self.sample_rate = sample_rate
         self.remove_noise = remove_noise
