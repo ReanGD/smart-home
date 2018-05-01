@@ -1,22 +1,17 @@
-import experiments.wrap_speech_recognition
-import experiments.voice_recognition
-import experiments.hotword
-import experiments.device_info
-import experiments.record
-import experiments.skills
-import experiments.vad
+from experiments import *
 
 
 def main():
     print("start")
 
-    # experiments.vad.run()
-    # experiments.wrap_speech_recognition.run()
-    # experiments.skills.run()
-    # experiments.record.run()
-    # experiments.device_info.run()
-    # experiments.voice_recognition.run()
-    # experiments.hotword.run()
+    # vad.run()
+    # wrap_speech_recognition.run()
+    # skills.run()
+    # record.run()
+    # device_info.run()
+    # voice_recognition.run()
+    # hotword.run()
+    # pocketsphinx_recognition.run()
 
     print("stop")
 
