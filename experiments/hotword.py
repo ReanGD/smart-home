@@ -1,8 +1,6 @@
 import os
-from os import devnull
 import audio
 from prettytable import PrettyTable
-from pocketsphinx.pocketsphinx import Decoder
 from recognition import (Pocketsphinx, Snowboy, PocketsphinxConfig, SnowboyConfig,
                          get_common_settings)
 
@@ -84,44 +82,23 @@ class PocketSphinxWrap(Pocketsphinx):
         return False
 
 
-def run1():
-    pocket = PocketSphinxWrap(_get_pocket_sphinx())
-    snowboy = _get_snowboy().create_hotword_recognizer()
-    device = audio.Device()
-    try:
-        settings = audio.StreamSettings(device, device_index=None, sample_rate=8000)
-        print("settings: {}".format(settings))
-        mic = device.create_microphone_stream(settings)
-        # mic = manager.create_data_stream(vr.AudioData.load_as_wav('/home/rean/projects/git/smart-home/record.wav', settings))
+class SnowboyWrap(Snowboy):
+    def __init__(self, config):
+        super().__init__(config)
+        self.seg = None
+        self.samples = 0
 
-        ind_pocket = 0
-        ind_snowboy = 0
-        ind_total = 0
-        while True:
-            frames = mic.read(settings.frames_per_buffer)
-            if len(frames) == 0:
-                break
+    def get_seg(self):
+        return self.seg
 
-            # snowboy_found = snowboy.is_hotword(frames)
-            snowboy_found = False
-            pocket_found = pocket.is_hotword(frames)
+    def is_hotword(self, raw_frames) -> bool:
+        self.samples += (len(raw_frames) // 2)
+        result = super().is_hotword(raw_frames)
 
-            if pocket_found and snowboy_found:
-                print('found total {}'.format(ind_total))
-                ind_total += 1
-            else:
-                if snowboy_found:
-                    ind_snowboy += 1
-                    print('found snowboy {}'.format(ind_snowboy))
+        if result:
+            self.seg = [self.samples - 10000, self.samples]
 
-                if pocket_found:
-                    ind_pocket += 1
-                    print('found pocket {}'.format(ind_pocket))
-
-    except KeyboardInterrupt:
-        pass
-    finally:
-        device.terminate()
+        return result
 
 
 class TimeRange(object):
@@ -170,7 +147,11 @@ class Result(object):
         fail = len(self.segs) - success
 
         success = str(success * 100 / len(labels)) + '%'
-        fail = str(fail * 100 / len(self.segs)) + '%'
+
+        if len(self.segs) == 0:
+            fail = '0.0%'
+        else:
+            fail = str(fail * 100 / len(self.segs)) + '%'
 
         return success, fail
 
@@ -187,15 +168,13 @@ class Sample(object):
         # self.hmms = [os.path.join(base, 'zero_ru.cd_cont_4000'),
         #              os.path.join(base, 'zero_ru.cd_semi_4000'),
         #              os.path.join(base, 'zero_ru.cd_ptm_4000')]
-        self.hmms = [os.path.join(base, 'zero_ru.cd_cont_4000'),
-                     os.path.join(base, 'zero_ru.cd_semi_4000'),
-                     os.path.join(base, 'zero_ru.cd_ptm_4000')]
+        self.hmms = [os.path.join(base, 'zero_ru.cd_semi_4000')]
         # self.thresholds = [1e-5, 1e-10, 1e-20, 1e-30, 1e-40, 1e-50]
         self.thresholds = [1e-10, 1e-20, 1e-30, 1e-40, 1e-50]
         # self.remove_noises = [True, False]
         self.remove_noises = [True, False]
         # self.sample_rates = [8000, 16000]
-        self.sample_rates = [8000, 16000]
+        self.sample_rates = [16000]
         self.results = []
 
     @staticmethod
@@ -203,7 +182,8 @@ class Sample(object):
         return [TimeRange(*[int(it) for it in line.split('-')]) for line in open(path).readlines()]
 
     def cnt_params(self):
-        return len(self.hmms) * len(self.thresholds) * len(self.remove_noises) * len(self.sample_rates)
+        return (len(self.hmms) * len(self.thresholds) * len(self.remove_noises) *
+                len(self.sample_rates))
 
     def get_hmm(self, ind):
         ind = ind // (len(self.thresholds) * len(self.remove_noises) * len(self.sample_rates))
@@ -236,6 +216,9 @@ class Sample(object):
         self.pocket_settings.threshold = thresholds
         self.pocket_settings.remove_noise = remove_noise
         self.pocket_settings.sample_rate = sample_rate
+        base = os.path.join(root(), 'pocketsphinx', 'zero_ru_cont_8k_v3')
+        self.pocket_settings.dict = os.path.join(base, 'ru.dic')
+
         pocket = PocketSphinxWrap(self.pocket_settings)
 
         settings = get_common_settings(self.device, None, [pocket.get_audio_settings()])
@@ -267,14 +250,77 @@ class Sample(object):
         print(t)
 
 
+class SampleSnowboy(object):
+    def __init__(self, device, samples_root):
+        self.device = device
+        self.file_wav = os.path.join(samples_root, 'audio.wav')
+        self.labels = Sample._load_labels(os.path.join(samples_root, 'audio.labels'))
+        self.snowboy_settings = _get_snowboy()
 
-def run_check():
+        self.sensitivities = [0.7, 0.8, 0.9, 1.0]
+        self.audio_gains = [0.5, 1.0, 1.5, 2.0, 3.0]
+        self.results = []
+
+    @staticmethod
+    def _load_labels(path):
+        return [TimeRange(*[int(it) for it in line.split('-')]) for line in open(path).readlines()]
+
+    def cnt_params(self):
+        return len(self.sensitivities) * len(self.audio_gains)
+
+    def get_sensitivity(self, ind):
+        ind = ind // len(self.audio_gains)
+        return self.sensitivities[ind % len(self.sensitivities)]
+
+    def get_audio_gain(self, ind):
+        return self.audio_gains[ind % len(self.audio_gains)]
+
+    def check(self):
+        frames = 128 # TODO: 10 ms
+        cnt = self.cnt_params()
+        for ind in range(cnt):
+            print("  check: {} of {}".format(ind + 1, cnt))
+            self._check_one(self.get_sensitivity(ind), self.get_audio_gain(ind), frames)
+
+    def _check_one(self, sensitivity, audio_gain, frames_cnt):
+        self.snowboy_settings.sensitivity = sensitivity
+        self.snowboy_settings.audio_gain = audio_gain
+
+        snowboy = SnowboyWrap(self.snowboy_settings)
+        settings = get_common_settings(self.device, None, [snowboy.get_audio_settings()])
+        wav = audio.AudioData.load_as_wav(self.file_wav, settings)
+        mic = self.device.create_data_stream(wav)
+
+        result = Result(settings.sample_rate)
+        while True:
+            frames = mic.read(frames_cnt)
+            if len(frames) == 0:
+                break
+
+            if snowboy.is_hotword(frames):
+                result.add_seg(snowboy.get_seg())
+
+        self.results.append(result)
+
+    def show(self):
+        print()
+        print("{}:".format(self.file_wav))
+        t = PrettyTable(['sensitivity', 'audio_gain', 'success', 'fail'])
+        for ind in range(self.cnt_params()):
+            sensitivity = self.get_sensitivity(ind)
+            audio_gain = self.get_audio_gain(ind)
+            success, fail = self.results[ind].stat(self.labels)
+            t.add_row([sensitivity, audio_gain, success, fail])
+        print(t)
+
+
+def run():
     device = audio.Device()
     try:
         base = os.path.join(root(), 'samples', 'speech')
         samples = [
-                    Sample(device, os.path.join(base, 'commands', 'vladimir')),
-                    Sample(device, os.path.join(base, 'commands', 'masha')),
+            SampleSnowboy(device, os.path.join(base, 'commands', 'vladimir')),
+            SampleSnowboy(device, os.path.join(base, 'commands', 'masha')),
                    # Sample(device, 'story', 'vladimir'),
                    # Sample(device, 'story', 'masha'),
                    ]
@@ -291,7 +337,3 @@ def run_check():
         pass
     finally:
         device.terminate()
-
-
-def run():
-    run_check()

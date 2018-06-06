@@ -31,8 +31,17 @@ def _get_pocket_sphinx() -> PocketsphinxConfig:
     return PocketsphinxConfig(hmm, dict, lm, hotwords, threshold, sample_rate, remove_noise)
 
 
+def _get_snowboy() -> SnowboyConfig:
+    base = os.path.join(root(), 'external', 'snowboy', 'resources')
+    resource_path = os.path.join(base, 'common.res')
+    model_path = os.path.join(base, 'alexa', 'alexa-avs-sample-app', 'alexa.umdl')
+
+    return SnowboyConfig(resource_path, model_path, sensitivity=0.9, audio_gain=2.0)
+
+
 def run():
-    pocket = Pocketsphinx(_get_pocket_sphinx())
+    # hotword_detector = _get_pocket_sphinx().create_hotword_recognizer()
+    hotword_detector = _get_snowboy().create_hotword_recognizer()
     device = audio.Device()
     try:
         settings = audio.StreamSettings(device, device_index=None, sample_rate=16000)
@@ -45,7 +54,7 @@ def run():
             if len(frames) == 0:
                 break
 
-            if pocket.is_hotword(frames):
+            if hotword_detector.is_hotword(frames):
                 ind_pocket += 1
                 print('found pocket {}'.format(ind_pocket))
 

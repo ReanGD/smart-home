@@ -8,11 +8,13 @@ def main():
     # wrap_speech_recognition.run()
     # skills.run()
     # record.run()
-    # device_info.run()
+    device_info.run()
     # voice_recognition.run()
     # hotword.run()
+    # hotword_mic.run()
     # split_file.run()
-    pocketsphinx_recognition.run()
+    # pocketsphinx_recognition.run()
+    # ps_test.run()
 
     print("stop")
 

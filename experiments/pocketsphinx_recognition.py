@@ -27,10 +27,10 @@ def create_decoder():
     decoder_config = Decoder.default_config()
     decoder_config.set_string('-hmm', hmm)
 
-    decoder_config.set_string("-lm", lm)
+    # decoder_config.set_string("-lm", lm)
     # decoder_config.set_string('-keyphrase', 'алекса')
     # decoder_config.set_float('-kws_threshold', 1e-20)
-    # decoder_config.set_string('-kws', kws)
+    decoder_config.set_string('-kws', kws)
 
     decoder_config.set_string('-dict', dict)
     decoder_config.set_boolean('-remove_noise', False)
@@ -55,6 +55,9 @@ def decode(device, decoder, wav_path):
             break
         decoder.process_raw(frames, False, False)
 
+    print([it.word for it in decoder.seg()])
+    print([(h.hypstr, h.score) for h, i in zip(decoder.nbest(), range(10))])
+
     decoder.end_utt()
 
 
@@ -65,9 +68,8 @@ def run():
     device = audio.Device()
     decoder = create_decoder()
     try:
-        decode(device, decoder, os.path.join(wav_dir, '0.wav'))
-        decoder.get_lattice().write('goforward.lat')
-        decoder.get_lattice().write_htk('goforward.htk')
+        for ind in range(20):
+            decode(device, decoder, wav_path = os.path.join(wav_dir, str(ind) + '.wav'))
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
     finally:
