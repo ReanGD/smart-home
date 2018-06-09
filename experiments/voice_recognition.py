@@ -1,40 +1,21 @@
-import soco
 import audio
 import config
 from respeaker import pixel_ring
 from recognition import Listener
 
 
-speakers = soco.discover()
-speaker = speakers.pop()
-
-
-def play():
-    # Display a list of speakers
-    # for speaker in speakers:
-    #     print("%s (%s)" % (speaker.player_name, speaker.ip_address))
-
-    # Play a speaker
-    speaker.play()
-
-
-def stop():
-    # Display a list of speakers
-    # for speaker in speakers:
-    #     print("%s (%s)" % (speaker.player_name, speaker.ip_address))
-
-    # Stop a speaker
-    speaker.stop()
-
-
-def run():
+def run(device_index=None):
     device = audio.Device()
     pixel_ring.off()
     try:
         recognizer_settings = config.yandex
-        # recognizer_settings = vr.RawConfig()
-        recognizer = Listener(config.pocket_sphinx, config.snowboy, recognizer_settings)
-        settings = recognizer.get_stream_settings(device, device_index=None)
+        # hotword_settings = config.pocket_sphinx
+        hotword_settings = config.http_activation
+
+        recognizer = Listener(hotword_settings, config.snowboy, recognizer_settings)
+        hotword_recognizer = recognizer.get_hotword_recognizer()
+        phrase_recognizer = recognizer.get_phrase_recognizer()
+        settings = recognizer.get_stream_settings(device, device_index=device_index)
         print("settings: {}".format(settings))
         mic = device.create_microphone_stream(settings)
 
@@ -54,17 +35,14 @@ def run():
             pixel_ring.wait()
             result = recognizer.recognize()
 
-            # result.save_as_wav("record.wav")
-            print(result)
-            if result is not None:
-                if 'включи музыку' in result:
-                    play()
-                elif 'выключи музыку' in result:
-                    stop()
+            audio.AudioData(phrase_recognizer.get_all_data(), settings).save_as_wav('record.wav')
+
             print(result)
             pixel_ring.off()
+            hotword_recognizer.set_answer(result)
     except KeyboardInterrupt:
         pass
     finally:
+        print('stop')
         pixel_ring.off()
         device.terminate()

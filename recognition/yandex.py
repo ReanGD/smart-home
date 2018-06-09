@@ -18,7 +18,7 @@ class Yandex(PhraseRecognizer):
     def get_audio_settings(self) -> AudioSettings:
         return self._audio_settings
 
-    def recognize_start(self, data_settings: StreamSettings):
+    def _recognize_start(self, data_settings: StreamSettings):
         self._data_settings = data_settings
 
         skips = {}
@@ -28,8 +28,7 @@ class Yandex(PhraseRecognizer):
         self._conn.putheader('Content-Type', 'audio/x-pcm;bit=16;rate=16000')
         self._conn.endheaders()
 
-    def recognize_add_frames(self, raw_frames):
-        data = b''.join(raw_frames)
+    def _add_data(self, data):
         self._conn.send(hex(len(data))[2:].encode() + b'\r\n' + data + b'\r\n')
 
     def recognize_finish(self):

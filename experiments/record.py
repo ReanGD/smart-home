@@ -1,9 +1,9 @@
 import audio
 
 
-def run():
+def run(index=None):
     device = audio.Device()
-    settings = audio.StreamSettings(device, device_index=None)
+    settings = audio.StreamSettings(device, device_index=index)
     data = []
     try:
         print("settings: {}".format(settings))

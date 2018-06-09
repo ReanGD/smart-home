@@ -34,6 +34,12 @@ class Listener(object):
                     self._phrase_recognizer.get_audio_settings()]
         return get_common_settings(device, device_index, settings)
 
+    def get_hotword_recognizer(self):
+        return self._hotword_recognizer
+
+    def get_phrase_recognizer(self):
+        return self._phrase_recognizer
+
     def _calc_frames_read(self, stream: Stream):
         frames_read = stream.get_settings().get_frames_count_by_duration_ms(self._time_read_ms)
         msg = 'Invalid value "frames_per_buffer" in stream.settings'
@@ -44,6 +50,7 @@ class Listener(object):
     def wait_hotword(self, stream: Stream):
         frames_read = self._calc_frames_read(stream)
 
+        self._hotword_recognizer.start()
         while True:
             frames = stream.read(frames_read)
             if len(frames) == 0:
