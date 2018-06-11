@@ -48,8 +48,12 @@ class Snowboy(HotwordRecognizer, VADRecognizer):
 
 class SnowboyConfig(HotwordRecognizerConfig, VADRecognizerConfig):
     def __init__(self, resource_path, model_path, sensitivity=0.5, audio_gain=1.0):
-        self.resource_path = resource_path
-        self.model_path = model_path
+        import os
+        import inspect
+        base = os.path.dirname(inspect.getfile(SnowboyDetect))
+
+        self.resource_path = os.path.join(base, resource_path)
+        self.model_path = os.path.join(base, model_path)
         self.sensitivity = sensitivity
         self.audio_gain = audio_gain
         self._cache = None
