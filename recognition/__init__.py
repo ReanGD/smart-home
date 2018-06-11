@@ -2,7 +2,7 @@ from .base import PhraseRecognizerConfig, HotwordRecognizerConfig, VADRecognizer
 from .yandex import Yandex, YandexConfig
 from .raw import Raw, RawConfig
 from .psphinx import Pocketsphinx, PocketsphinxConfig
-from .snowboy import Snowboy, SnowboyConfig
+from .snowboy_wrap import Snowboy, SnowboyConfig
 from .http_activation import HttpActivation, HttpActivationConfig
 from .listener import Listener
 from .audio_settings import get_common_settings

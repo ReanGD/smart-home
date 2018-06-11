@@ -1,6 +1,5 @@
 from pyaudio import get_format_from_width
-from audio import Device, StreamSettings
-from external.snowboy.snowboydetect import SnowboyDetect
+from snowboy.snowboydetect import SnowboyDetect
 from .base import HotwordRecognizer, VADRecognizer, HotwordRecognizerConfig, VADRecognizerConfig
 from .audio_settings import AudioSettings
 
