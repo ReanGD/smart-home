@@ -6,7 +6,7 @@ pacaur -S swig
 cd ~/projects/venv
 virtualenv smart-home
 source smart-home/bin/activate
-pip3 install pyaudio pocketsphinx webrtcvad soco respeaker
+pip3 install pyaudio pocketsphinx webrtcvad soco respeaker protobuf
 
 git clone https://github.com/Kitt-AI/snowboy.git ~/tmp/snowboy
 cd ~/tmp/snowboy
@@ -14,6 +14,8 @@ sed -i -e "s|-lf77blas -lcblas -llapack -latlas|-lcblas|g" -e 's/ -shared/ -Wl,-
 python setup.py build
 python setup.py install
 rm -rf ~/tmp/snowboy
+
+./generate_proto.sh
 
 deactivate
 ```

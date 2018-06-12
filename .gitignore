@@ -12,3 +12,9 @@ venv/
 samples/
 samples_out/
 pocketsphinx/
+
+#proto
+recognition/yandex_proto/basic_pb2.py
+recognition/yandex_proto/ttsbackend_pb2.py
+recognition/yandex_proto/tts_pb2.py
+recognition/yandex_proto/voiceproxy_pb2.py
