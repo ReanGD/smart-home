@@ -1,5 +1,6 @@
 from .base import PhraseRecognizerConfig, HotwordRecognizerConfig, VADRecognizerConfig
 from .yandex import Yandex, YandexConfig
+from .yandex_protobuf import YandexProtobuf, YandexProtobufConfig
 from .raw import Raw, RawConfig
 from .psphinx import Pocketsphinx, PocketsphinxConfig
 from .snowboy_wrap import Snowboy, SnowboyConfig
@@ -14,6 +15,8 @@ __all__ = [
     'VADRecognizerConfig',
     'Yandex',
     'YandexConfig',
+    'YandexProtobuf',
+    'YandexProtobufConfig',
     'Raw',
     'RawConfig',
     'Pocketsphinx',

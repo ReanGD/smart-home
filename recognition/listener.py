@@ -120,3 +120,6 @@ class Listener(object):
 
     def recognize(self):
         return self._phrase_recognizer.recognize_finish()
+
+    def close(self):
+        self._phrase_recognizer.close()

@@ -9,8 +9,6 @@ from .audio_settings import AudioSettings
 class Yandex(PhraseRecognizer):
     def __init__(self, config):
         super().__init__(config)
-        self._recognize_host = config.host
-        self._recognize_url = config.get_url()
         self._data_settings = None
         self._conn = None
         self._audio_settings = AudioSettings(channels=1, sample_format=paInt16, sample_rate=16000)
@@ -22,8 +20,8 @@ class Yandex(PhraseRecognizer):
         self._data_settings = data_settings
 
         skips = {}
-        self._conn = HTTPSConnection(self._recognize_host)
-        self._conn.putrequest('POST', self._recognize_url, **skips)
+        self._conn = HTTPSConnection(self.get_config().host)
+        self._conn.putrequest('POST', self.get_config().get_url(), **skips)
         self._conn.putheader('Transfer-Encoding', 'chunked')
         self._conn.putheader('Content-Type', 'audio/x-pcm;bit=16;rate=16000')
         self._conn.endheaders()
@@ -48,8 +46,8 @@ class Yandex(PhraseRecognizer):
 
 
 class YandexConfig(PhraseRecognizerConfig):
-    def __init__(self, key, user_uuid, topic='queries', lang='ru-RU', disable_antimat=True):
-        self.key = key
+    def __init__(self, api_key, user_uuid, topic='queries', lang='ru-RU', disable_antimat=True):
+        self.api_key = api_key
         self.user_uuid = user_uuid
         self.topic = topic
         self.lang = lang
@@ -62,4 +60,4 @@ class YandexConfig(PhraseRecognizerConfig):
     def get_url(self):
         tmp = '/asr_xml?uuid={}&key={}&topic={}&lang={}&disableAntimat={}'
         disable_antimat = str(self.disable_antimat).lower()
-        return tmp.format(self.user_uuid, self.key, self.topic, self.lang, disable_antimat)
+        return tmp.format(self.user_uuid, self.api_key, self.topic, self.lang, disable_antimat)

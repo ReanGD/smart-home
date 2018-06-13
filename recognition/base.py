@@ -10,6 +10,9 @@ class PhraseRecognizer(object):
     def get_audio_settings(self) -> AudioSettings:
         raise Exception('Not implemented "get_audio_settings"')
 
+    def get_config(self):
+        return self._config
+
     def _recognize_start(self, data_settings: StreamSettings):
         raise Exception('Not implemented "_recognize_start"')
 
@@ -30,6 +33,9 @@ class PhraseRecognizer(object):
 
     def get_all_data(self):
         return b''.join(self._data_arr)
+
+    def close(self):
+        pass
 
 
 class HotwordRecognizer(object):
