@@ -9,6 +9,7 @@ class Stream(object):
             self._settings = StreamSettings()
         else:
             self._settings = settings
+        self._frames_ratio = float(self._settings.sample_rate) / 1000.0
 
     def __enter__(self):
         return self
@@ -19,7 +20,10 @@ class Stream(object):
     def get_settings(self) -> StreamSettings:
         return self._settings
 
-    def read(self, num_frames):
+    def get_frames_count_by_duration_ms(self, ms):
+        return int(ms * self._frames_ratio)
+
+    def read(self, ms):
         raise Exception('Not implementation read')
 
     def close(self):
@@ -43,10 +47,10 @@ class Microphone(Stream):
         self._stream = pa.open(**arguments)
         pa.start_stream(self._stream)
 
-    def read(self, num_frames):
+    def read(self, ms):
         if self._stream is None:
             raise RuntimeError('Stream is closed')
-        return pa.read_stream(self._stream, num_frames, False)
+        return pa.read_stream(self._stream, self.get_frames_count_by_duration_ms(ms), False)
 
     def close(self):
         try:
@@ -63,9 +67,9 @@ class DataStream(Stream):
         self._stream = data.get_raw_data()
         self._offset = 0
 
-    def read(self, num_frames):
+    def read(self, ms):
         start = self._offset
-        self._offset += (num_frames * self._settings.sample_width)
+        self._offset += (self.get_frames_count_by_duration_ms(ms) * self._settings.sample_width)
         return self._stream[start:self._offset]
 
     def close(self):

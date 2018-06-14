@@ -18,18 +18,18 @@ class StreamSettings(object):
                  channels: int=1,
                  sample_format=paInt16,
                  sample_rate: int=None,
-                 frames_per_buffer: int=1024):
+                 buffer_in_ms: int=64):
 
         device_index = get_device_index(device_index)
         device_info = pa.get_device_info(device_index)
-        check_params(device_info, channels, sample_format, frames_per_buffer)
+        check_params(device_info, channels, sample_format, buffer_in_ms)
 
         self._device_index = device_index
         self._channels = channels
         self._sample_format = sample_format
         self._sample_rate = get_sample_rate(device_info, sample_rate)
         self._sample_width = get_sample_width(sample_format)
-        self._frames_per_buffer = frames_per_buffer
+        self._frames_per_buffer = self.get_frames_count_by_duration_ms(buffer_in_ms)
 
     def clone(self):
         return StreamSettings(self._device_index, self._channels,
@@ -108,15 +108,15 @@ def get_device_index(device_index):
         return pa.get_default_input_device()
 
 
-def check_params(device_info, channels, sample_format, frames_per_buffer):
+def check_params(device_info, channels, sample_format, buffer_in_ms):
     msg = ("Channels must be a positive integer. "
            "Channels should be between 1 and {} inclusive").format(device_info.maxInputChannels)
     assert isinstance(channels, int) and 0 < channels <= device_info.maxInputChannels, msg
 
     assert sample_format in paFormats, "Invalid value for sample format"
 
-    msg = "Chunk size must be a positive integer"
-    assert isinstance(frames_per_buffer, int) and frames_per_buffer > 0, msg
+    msg = "Buffer in ms must be a positive integer"
+    assert isinstance(buffer_in_ms, int) and buffer_in_ms > 0, msg
 
 
 def get_sample_width(sample_format):
