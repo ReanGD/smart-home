@@ -4,9 +4,10 @@ from experiments import *
 def main():
     print("start")
 
-    device_info.run()
+    # device_info.run()
     # record.run(8)
     # voice_recognition.run(8)
+    yaproto.run(8)
 
     # vad.run()
     # wrap_speech_recognition.run()

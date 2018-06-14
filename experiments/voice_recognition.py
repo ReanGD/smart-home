@@ -6,6 +6,7 @@ from recognition import Listener
 
 def run(device_index=None):
     device = audio.Device()
+    recognizer = None
     pixel_ring.off()
     try:
         recognizer_settings = config.yandex
@@ -45,4 +46,5 @@ def run(device_index=None):
     finally:
         print('stop')
         pixel_ring.off()
+        recognizer.close()
         device.terminate()
