@@ -10,6 +10,12 @@ class Stream(object):
         else:
             self._settings = settings
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
     def get_settings(self) -> StreamSettings:
         return self._settings
 
