@@ -1,11 +1,19 @@
-import pyaudio
+from pyaudio import paFloat32, paInt32, paInt24, paInt16, paInt8, paUInt8, get_sample_size
+
+
+formats = {paFloat32: "paFloat32",
+           paInt32: "paInt32",
+           paInt24: "paInt24",
+           paInt16: "paInt16",
+           paInt8: "paInt8",
+           paUInt8: "paUInt8"}
 
 
 class StreamSettings(object):
     def __init__(self, device,
                  device_index: int=None,
                  channels: int=1,
-                 sample_format=pyaudio.paInt16,
+                 sample_format=paInt16,
                  sample_rate: int=None,
                  frames_per_buffer: int=1024):
 
@@ -17,10 +25,7 @@ class StreamSettings(object):
             assert 0 <= device_index < count, msg.format(count, count - 1)
 
         assert isinstance(channels, int) and channels > 0, "Channels must be a positive integer"
-
-        valid_formats = [pyaudio.paFloat32, pyaudio.paInt32, pyaudio.paInt24,
-                         pyaudio.paInt16, pyaudio.paInt8, pyaudio.paUInt8]
-        assert sample_format in valid_formats, "Invalid value fpr sample format"
+        assert sample_format in formats, "Invalid value fpr sample format"
 
         if sample_rate is None:
             device_info = device.get_device_info_by_index(device_index)
@@ -35,7 +40,7 @@ class StreamSettings(object):
         msg = "Chunk size must be a positive integer"
         assert isinstance(frames_per_buffer, int) and frames_per_buffer > 0, msg
 
-        sample_width = pyaudio.get_sample_size(sample_format)
+        sample_width = get_sample_size(sample_format)
         msg = "Sample width must be integer between 1 and 4 inclusive"
         assert isinstance(sample_width, int) and 1 <= sample_width <= 4, msg
 
@@ -90,12 +95,6 @@ class StreamSettings(object):
         return self._frames_per_buffer
 
     def __str__(self):
-        formats = {pyaudio.paFloat32: "paFloat32",
-                   pyaudio.paInt32: "paInt32",
-                   pyaudio.paInt24: "paInt24",
-                   pyaudio.paInt16: "paInt16",
-                   pyaudio.paInt8: "paInt8",
-                   pyaudio.paUInt8: "paUInt8"}
         msg = 'channels={}, sample_format={}, sample_rate={}, sample_width={}, frames_per_buffer={}'
         return msg.format(self._channels, formats[self._sample_format], self._sample_rate,
                           self._sample_width, self._frames_per_buffer)

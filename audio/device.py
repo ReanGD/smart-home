@@ -1,4 +1,4 @@
-import pyaudio
+from pyaudio import PyAudio
 from .streams import MicrophoneStream, MicrophoneSavedStream, DataStream
 from .stream_settings import StreamSettings
 from .audio_data import AudioData
@@ -6,7 +6,7 @@ from .audio_data import AudioData
 
 class Device(object):
     def __init__(self):
-        self._device = pyaudio.PyAudio()
+        self._device = PyAudio()
         self._streams = []
 
     def get_device_count(self) -> int:
@@ -25,22 +25,6 @@ class Device(object):
                 return i
 
         return None
-
-    @staticmethod
-    def _print_microphone_info(device_info):
-        print(device_info["name"])
-        for ind, name in device_info.items():
-            print("{}: {}".format(ind, name))
-
-    def print_microphones_info(self):
-        Device._print_microphone_info(self._device.get_default_input_device_info())
-
-        for i in range(self._device.get_device_count()):
-            self._device.get_default_input_device_info()
-            device_info = self._device.get_device_info_by_index(i)
-            if device_info["maxInputChannels"] != 0:
-                print()
-                Device._print_microphone_info(device_info)
 
     def create_microphone_stream(self, settings: StreamSettings, with_save=False):
         stream = self._device.open(input_device_index=settings.device_index,
