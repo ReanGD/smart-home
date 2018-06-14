@@ -4,8 +4,8 @@ from experiments import *
 def main():
     print("start")
 
-    device_info.run()
-    # record.run(8)
+    # device_info.run()
+    record.run(8)
     # voice_recognition.run(8)
     # yaproto.run(8)
 

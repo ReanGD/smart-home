@@ -2,12 +2,12 @@ import audio
 
 
 def run(index=None):
-    device = audio.Device()
-    settings = audio.StreamSettings(device, device_index=index)
+    settings = audio.StreamSettings(device_index=index)
+    mic = None
     data = []
     try:
         print("settings: {}".format(settings))
-        mic = device.create_microphone_stream(settings)
+        mic = audio.Microphone(settings)
         print("start record...")
 
         while True:
@@ -17,4 +17,5 @@ def run(index=None):
         print("stop record...")
         audio.AudioData(b''.join(data), settings).save_as_wav("record.wav")
     finally:
-        device.terminate()
+        if mic is not None:
+            mic.close()

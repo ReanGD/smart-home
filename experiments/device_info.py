@@ -2,25 +2,12 @@ import audio
 
 
 def run():
-    device = audio.Device()
-    try:
-        template = '{}: "{}", maxInputChannels: {}, defaultSampleRate: {}'
-        default_ind = device.get_device_info_by_index(None)['index']
+    tmpl = '{}: "{}", maxInputChannels: {}, defaultSampleRate: {}'
+    for ind in range(audio.StreamSettings.get_device_count()):
+        info = audio.StreamSettings.get_device_info_by_index(ind)
+        if info.max_input_channels == 0:
+            continue
 
-        for ind in range(device.get_device_count()):
-            info = device.get_device_info_by_index(ind)
-
-            index = info['index']
-            name = info['name']
-            max_input_channels = info['maxInputChannels']
-
-            if max_input_channels == 0:
-                continue
-
-            if default_ind == index:
-                name = '(default) ' + name
-
-            print(template.format(index, name, max_input_channels, info['defaultSampleRate']))
-
-    finally:
-        device.terminate()
+        if info.default:
+            info.name = '(default) ' + info.name
+        print(tmpl.format(ind, info.name, info.max_input_channels, info.default_sample_rate))
