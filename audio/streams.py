@@ -1,6 +1,9 @@
 import _portaudio as pa
+from collections import deque
+from time import sleep
 from .stream_settings import StreamSettings
 from .audio_data import AudioData
+from .types import paContinue
 
 
 class Stream(object):
@@ -14,7 +17,7 @@ class Stream(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, value_type, value, traceback):
         self.close()
 
     def get_settings(self) -> StreamSettings:
@@ -33,6 +36,10 @@ class Stream(object):
 class Microphone(Stream):
     def __init__(self, settings: StreamSettings = None):
         super().__init__(settings)
+
+        # 5 sec
+        self._audio_buffer = deque(maxlen=500)
+
         s = self.get_settings()
         arguments = {
             'rate': s.sample_rate,
@@ -42,15 +49,24 @@ class Microphone(Stream):
             'output': False,
             'input_device_index': s.device_index,
             'output_device_index': None,
-            'frames_per_buffer': s.frames_per_buffer}
+            'frames_per_buffer': s.get_frames_count_by_duration_ms(10),
+            'stream_callback': self._audio_callback}
 
         self._stream = pa.open(**arguments)
         pa.start_stream(self._stream)
 
-    def read(self, ms):
+    def _audio_callback(self, data, frame_count, time_info, status):
+        self._audio_buffer.append(data)
+        return None, paContinue
+
+    def read(self, ms=10):
         if self._stream is None:
             raise RuntimeError('Stream is closed')
-        return pa.read_stream(self._stream, self.get_frames_count_by_duration_ms(ms), False)
+        cnt_buffers = ms // 10
+        while len(self._audio_buffer) < cnt_buffers:
+            sleep(0.001)
+
+        return b''.join([self._audio_buffer.popleft() for _ in range(cnt_buffers)])
 
     def close(self):
         try:

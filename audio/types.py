@@ -1,6 +1,10 @@
 import _portaudio as pa
 
 
+paContinue = pa.paContinue
+paComplete = pa.paComplete
+paAbort = pa.paAbort
+
 paFloat32 = pa.paFloat32
 paInt32 = pa.paInt32
 paInt24 = pa.paInt24

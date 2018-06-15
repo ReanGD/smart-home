@@ -9,7 +9,7 @@ def run(index=None):
         with Microphone(settings) as mic:
             print("start record...")
             while True:
-                data.append(mic.read(20))
+                data.append(mic.read(50))
     except KeyboardInterrupt:
         print("stop record...")
         AudioData(b''.join(data), settings).save_as_wav("record.wav")

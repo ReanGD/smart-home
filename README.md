@@ -6,7 +6,7 @@ pacaur -S swig
 cd ~/projects/venv
 virtualenv smart-home
 source smart-home/bin/activate
-pip3 install pyaudio pocketsphinx webrtcvad soco respeaker protobuf
+pip3 install pyaudio pocketsphinx webrtcvad soco respeaker protobuf numpy
 
 git clone https://github.com/Kitt-AI/snowboy.git ~/tmp/snowboy
 cd ~/tmp/snowboy

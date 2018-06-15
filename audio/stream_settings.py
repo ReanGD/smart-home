@@ -17,23 +17,21 @@ class StreamSettings(object):
                  device_index: int=None,
                  channels: int=1,
                  sample_format=paInt16,
-                 sample_rate: int=None,
-                 buffer_in_ms: int=64):
+                 sample_rate: int=None):
 
         device_index = get_device_index(device_index)
         device_info = pa.get_device_info(device_index)
-        check_params(device_info, channels, sample_format, buffer_in_ms)
+        check_params(device_info, channels, sample_format)
 
         self._device_index = device_index
         self._channels = channels
         self._sample_format = sample_format
         self._sample_rate = get_sample_rate(device_info, sample_rate)
         self._sample_width = get_sample_width(sample_format)
-        self._frames_per_buffer = self.get_frames_count_by_duration_ms(buffer_in_ms)
 
     def clone(self):
-        return StreamSettings(self._device_index, self._channels,
-                              self._sample_format, self._sample_rate, self._frames_per_buffer)
+        return StreamSettings(self._device_index, self._channels, self._sample_format,
+                              self._sample_rate)
 
     @staticmethod
     def get_device_count() -> int:
@@ -85,15 +83,10 @@ class StreamSettings(object):
         # size of each sample
         return self._sample_width
 
-    @property
-    def frames_per_buffer(self) -> int:
-        # length of the audio buffer in frames
-        return self._frames_per_buffer
-
     def __str__(self):
-        msg = 'channels={}, sample_format={}, sample_rate={}, sample_width={}, frames_per_buffer={}'
+        msg = 'channels={}, sample_format={}, sample_rate={}, sample_width={}'
         return msg.format(self._channels, paFormats.get(self._sample_format, 'paUnknown'),
-                          self._sample_rate, self._sample_width, self._frames_per_buffer)
+                          self._sample_rate, self._sample_width)
 
 
 def get_device_index(device_index):
@@ -108,15 +101,12 @@ def get_device_index(device_index):
         return pa.get_default_input_device()
 
 
-def check_params(device_info, channels, sample_format, buffer_in_ms):
+def check_params(device_info, channels, sample_format):
     msg = ("Channels must be a positive integer. "
            "Channels should be between 1 and {} inclusive").format(device_info.maxInputChannels)
     assert isinstance(channels, int) and 0 < channels <= device_info.maxInputChannels, msg
 
     assert sample_format in paFormats, "Invalid value for sample format"
-
-    msg = "Buffer in ms must be a positive integer"
-    assert isinstance(buffer_in_ms, int) and buffer_in_ms > 0, msg
 
 
 def get_sample_width(sample_format):
