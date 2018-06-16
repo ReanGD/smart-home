@@ -1,9 +1,10 @@
 import _portaudio as pa
+from threading import Lock
 from collections import deque
-from time import sleep
-from .stream_settings import StreamSettings
-from .audio_data import AudioData
+from asyncio import Future, get_event_loop
 from .types import paContinue
+from .audio_data import AudioData
+from .stream_settings import StreamSettings
 
 
 class Stream(object):
@@ -36,6 +37,10 @@ class Stream(object):
 class Microphone(Stream):
     def __init__(self, settings: StreamSettings = None):
         super().__init__(settings)
+        self._loop = get_event_loop()
+        self._lock = Lock()
+        self._waiter = None
+        self._need_buffers = None
 
         # 5 sec
         self._audio_buffer = deque(maxlen=500)
@@ -53,18 +58,49 @@ class Microphone(Stream):
             'stream_callback': self._audio_callback}
 
         self._stream = pa.open(**arguments)
-        pa.start_stream(self._stream)
+        self._is_started = False
+
+    def _wakeup_waiter(self):
+        waiter = self._waiter
+        if waiter is not None:
+            self._waiter = None
+            if not waiter.cancelled():
+                waiter.set_result(None)
 
     def _audio_callback(self, data, frame_count, time_info, status):
         self._audio_buffer.append(data)
+        self._lock.acquire()
+        try:
+            if self._need_buffers is not None and len(self._audio_buffer) >= self._need_buffers:
+                self._need_buffers = None
+                self._loop.call_soon_threadsafe(self._wakeup_waiter)
+        finally:
+            self._lock.release()
+
         return None, paContinue
 
-    def read(self, ms=10):
-        if self._stream is None:
-            raise RuntimeError('Stream is closed')
+    async def read(self, ms=10):
+        if not self._is_started:
+            if self._stream is not None:
+                self._is_started = True
+                pa.start_stream(self._stream)
+
         cnt_buffers = ms // 10
-        while len(self._audio_buffer) < cnt_buffers:
-            sleep(0.001)
+        if len(self._audio_buffer) < cnt_buffers:
+            self._lock.acquire()
+            try:
+                self._need_buffers = cnt_buffers
+                self._waiter = Future(loop=self._loop)
+            finally:
+                self._lock.release()
+
+            if self._stream is None:
+                raise RuntimeError('Stream is closed')
+
+            try:
+                await self._waiter
+            finally:
+                self._waiter = None
 
         return b''.join([self._audio_buffer.popleft() for _ in range(cnt_buffers)])
 

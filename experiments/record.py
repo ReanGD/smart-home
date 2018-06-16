@@ -1,15 +1,15 @@
 from audio import StreamSettings, Microphone, AudioData
 
 
-def run(index=None):
+async def run(index=None):
     settings = StreamSettings(device_index=index)
-    data = []
+    print("settings: {}".format(settings))
+    data = AudioData(b'', settings)
     try:
-        print("settings: {}".format(settings))
         with Microphone(settings) as mic:
             print("start record...")
             while True:
-                data.append(mic.read(50))
-    except KeyboardInterrupt:
+                data.add_raw_data(await mic.read(50))
+    except GeneratorExit:
         print("stop record...")
-        AudioData(b''.join(data), settings).save_as_wav("record.wav")
+        data.save_as_wav("record.wav")

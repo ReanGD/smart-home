@@ -1,11 +1,12 @@
+import asyncio
 from experiments import *
 
 
-def main():
+async def run():
     print("start")
 
     # device_info.run()
-    record.run(8)
+    await record.run(8)
     # voice_recognition.run(8)
     # yaproto.run(8)
 
@@ -19,6 +20,18 @@ def main():
     # ps_test.run()
 
     print("stop")
+
+
+def main():
+    loop = asyncio.get_event_loop()
+    task = None
+    try:
+        task = run()
+        loop.run_until_complete(task)
+    except KeyboardInterrupt:
+        task.close()
+    finally:
+        loop.close()
 
 
 if __name__ == '__main__':
