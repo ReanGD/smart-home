@@ -4,7 +4,7 @@ from audio import StreamSettings, Microphone
 
 async def run(index=None):
     settings = StreamSettings(device_index=index)
-    recognizer = config.yandex_protobuf.create_phrase_recognizer()
+    recognizer = config.yandex.create_phrase_recognizer()
     print("settings: {}".format(settings))
 
     try:

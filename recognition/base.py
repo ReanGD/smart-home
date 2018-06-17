@@ -13,12 +13,12 @@ class PhraseRecognizer(object):
     def get_config(self):
         return self._config
 
-    async def _recognize_start(self, data_settings: StreamSettings):
+    async def _recognize_start(self):
         raise Exception('Not implemented "_recognize_start"')
 
-    async def recognize_start(self, data_settings: StreamSettings):
+    async def recognize_start(self):
         self._data_arr = []
-        await self._recognize_start(data_settings)
+        await self._recognize_start()
 
     async def _add_data(self, data):
         raise Exception('Not implemented "_add_data"')

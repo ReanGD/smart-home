@@ -9,7 +9,6 @@ def run(device_index=None):
     recognizer = None
     pixel_ring.off()
     try:
-        recognizer_settings = config.yandex
         # hotword_settings = config.pocket_sphinx
         hotword_settings = config.http_activation
 
