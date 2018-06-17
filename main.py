@@ -1,5 +1,15 @@
 import asyncio
+import logging
+from sys import stdout
 from experiments import *
+
+
+def init_logger():
+    handler = logging.StreamHandler(stdout)
+
+    logger = logging.getLogger('yanader_transport')
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
 
 
 async def run():
@@ -23,6 +33,7 @@ async def run():
 
 
 def main():
+    init_logger()
     loop = asyncio.get_event_loop()
     task = None
     try:
