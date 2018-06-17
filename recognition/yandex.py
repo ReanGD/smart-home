@@ -1,95 +1,48 @@
-import asyncio
-from audio import StreamSettings, paInt16
+from audio import paInt16, Stream
 from .audio_settings import AudioSettings
 from .yandex_api import Api, YandexApiError
 from .base import PhraseRecognizer, PhraseRecognizerConfig
 
 
-class ApiWrapper(object):
-    def __init__(self, config, result_callback, finish_result_callback):
-        self._config = config
-        self._api = Api()
-        self._recv_task = None
-        self._result_callback = result_callback
-        self._finish_result_callback = finish_result_callback
-        self._last_text = ''
-
-    async def connect(self):
-        c = self._config
-        await self._api.connect(c.app, c.host, c.port, c.user_uuid, c.api_key, c.topic, c.lang,
-                                c.disable_antimat)
-        self._recv_task = asyncio.ensure_future(self._api.recv_loop(self._recv_callback))
-
-    async def send_audio_data(self, data):
-        await self._api.send_audio_data(data)
-
-    async def _recv_callback(self, response):
-        if response.endOfUtt:
-            await self._finish_result_callback(response)
-        else:
-            if len(response.recognition) != 1:
-                raise YandexApiError('len(recognition) != 1')
-
-            phrase = response.recognition[0]
-            if phrase.confidence != 1.0:
-                raise YandexApiError('phrase.confidence != 1')
-            elif len(phrase.words) != 1:
-                raise YandexApiError('len(words) != 1')
-
-            word = phrase.words[0]
-            if word.confidence != 1.0:
-                raise YandexApiError('word.confidence != 1')
-
-            if self._last_text != word.value:
-                self._last_text = word.value
-                await self._result_callback(word.value)
-
-    def close(self):
-        if self._recv_task is not None:
-            self._recv_task.cancel()
-            self._recv_task = None
-
-        if self._api is not None:
-            self._api.close()
-            self._api = None
-
-        self._last_text = ''
-
-
 class Yandex(PhraseRecognizer):
     def __init__(self, config):
-        super().__init__(config)
-        self._audio_settings = AudioSettings(channels=1, sample_format=paInt16, sample_rate=16000)
-        self._api = ApiWrapper(self.get_config(), self._recv_result, self._recv_finish_result)
+        audio_settings = AudioSettings(channels=1, sample_format=paInt16, sample_rate=16000)
+        super().__init__(config, audio_settings)
+        self._api = Api()
+        self._recv_callback = None
+        self._last_text = ''
+        self._is_continue = False
 
-    def get_audio_settings(self) -> AudioSettings:
-        return self._audio_settings
+    async def _on_recv(self, response):
+        is_phrase_finished = response.endOfUtt
+        recognition = response.recognition
+        if not is_phrase_finished:
+            if len(recognition) != 1:
+                raise YandexApiError('len(recognition) != 1')
 
-    async def _recv_result(self, text):
-        print(text)
+        phrases = [' '.join([word.value for word in phrase.words]) for phrase in recognition]
 
-    async def _recv_finish_result(self, response):
-        if len(response.recognition) != 0:
-            for bio in response.bioResult:
-                print('{} {} {}'.format(bio.classname, bio.confidence, bio.tag))
+        if not is_phrase_finished and self._last_text == phrases[0]:
+            return True
+        else:
+            self._last_text = phrases[0]
 
-        for ind, phrase in enumerate(response.recognition):
-            words = ['{}({})'.format(word.value, word.confidence) for word in phrase.words]
-            print('{}: {}'.format(ind, ':'.join(words)))
+        self._is_continue = await self._recv_callback(phrases, is_phrase_finished, response)
+        return self._is_continue
 
-    async def _recognize_start(self):
-        await self._api.connect()
+    async def recognize(self, stream: Stream, recv_callback):
+        self._is_continue = True
+        self._recv_callback = recv_callback
+        c = self.get_config()
+        await self._api.connect(c.app, c.host, c.port, c.user_uuid, c.api_key, c.topic, c.lang,
+                                c.disable_antimat)
 
-    async def _add_data(self, data):
-        await self._api.send_audio_data(data)
+        await self._api.recv_loop_run(self._on_recv)
+        while self._is_continue:
+            await self._api.send_audio_data(await stream.read(50))
 
-    def recognize_finish(self):
-        pass
-
-    def close(self):
-        if self._api:
-            self._api.close()
-            self._api = None
+        self._api.close()
+        self._last_text = ''
 
 
 class YandexConfig(PhraseRecognizerConfig):

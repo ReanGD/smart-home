@@ -1,3 +1,4 @@
+import asyncio
 from logging import getLogger
 from .transport import Transport
 from .basic_pb2 import ConnectionResponse
@@ -22,6 +23,7 @@ def error_from_response(response, text):
 class Api(object):
     def __init__(self):
         self._transport = Transport()
+        self._recv_task = None
 
     async def connect(self, app, host, port, user_uuid, api_key, topic, lang, disable_antimat):
         logger.info('Start connecting to %s:%d', host, port)
@@ -29,6 +31,9 @@ class Api(object):
         await self._transport.upgrade_connection(app, host, port)
         await self._send_connection_request(user_uuid, api_key, app, topic, lang, disable_antimat)
         logger.info('Connected to %s:%s', host, port)
+
+    def is_active(self):
+        return self._transport is not None and self._transport.is_active()
 
     async def send_audio_data(self, data):
         if data is None:
@@ -39,21 +44,32 @@ class Api(object):
             await self._transport.send_protobuf(AddData(lastChunk=False, audioData=data))
 
     async def recv_loop(self, callback):
-        while True:
-            response = await self._transport.recv_protobuf(AddDataResponse, ConnectionResponse)
+        is_continue = True
+        try:
+            while is_continue:
+                response = await self._transport.recv_protobuf(AddDataResponse, ConnectionResponse)
 
-            if isinstance(response, ConnectionResponse):
-                raise error_from_response(response, 'Bad AddData response (wrong type)')
-            elif response is None:
-                raise YandexApiError('Bad AddData response (null result)')
-            elif response.responseCode != 200:
-                raise error_from_response(response, 'Bad AddData response (responce code)')
+                if isinstance(response, ConnectionResponse):
+                    raise error_from_response(response, 'Bad AddData response (wrong type)')
+                elif response is None:
+                    raise YandexApiError('Bad AddData response (null result)')
+                elif response.responseCode != 200:
+                    raise error_from_response(response, 'Bad AddData response (responce code)')
 
-            if len(response.recognition) == 0:
-                continue
+                if len(response.recognition) == 0:
+                    continue
 
-            logger.debug('Received AddDataResponse')
-            await callback(response)
+                logger.debug('Received AddDataResponse')
+                is_continue = await callback(response)
+        except asyncio.TimeoutError:
+            pass
+        finally:
+            self._recv_task = None
+            logger.info('recv loop finished')
+
+    async def recv_loop_run(self, callback):
+        if self._recv_task is None:
+            self._recv_task = asyncio.ensure_future(self.recv_loop(callback))
 
     async def _send_connection_request(self, user_uuid, api_key, app, topic, lang, disable_antimat):
         advanced_asr_options = AdvancedASROptions(
@@ -102,7 +118,11 @@ class Api(object):
         logger.debug('Received a response to the connection request')
 
     def close(self):
-        if self._transport is not None:
+        if self._recv_task is not None:
+            asyncio.wait_for(self._recv_task, 1.0)
+            self._recv_task = None
+
+        if self.is_active():
             self._transport.close()
-            self._transport = None
-            logger.info('Api closed')
+
+        logger.info('Api closed')

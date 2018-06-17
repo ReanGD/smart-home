@@ -6,6 +6,8 @@ from experiments import *
 
 def init_logger():
     handler = logging.StreamHandler(stdout)
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
+    handler.setFormatter(formatter)
 
     logger = logging.getLogger('yanader_transport')
     logger.setLevel(logging.INFO)

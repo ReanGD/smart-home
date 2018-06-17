@@ -16,6 +16,9 @@ class Transport(object):
         self._writer = None
 
     async def connect(self, host, port):
+        if self.is_active():
+            raise YandexTransportError('Connect without close')
+
         logger.info('Start connecting to %s:%d', host, port)
 
         ssl = (port == 443)
@@ -35,6 +38,9 @@ class Transport(object):
 
         logger.critical('Сould not connect to %s:%d, message: %s', host, port)
         raise last_ex
+
+    def is_active(self):
+        return self._writer is not None
 
     async def upgrade_connection(self, app, host, port):
         request = ('GET /asr_partial_checked HTTP/1.1\r\n'
@@ -77,8 +83,9 @@ class Transport(object):
         raise saved_exception
 
     def close(self):
-        if self._writer is not None:
+        if self.is_active():
             self._writer.close()
             self._writer = None
             self._reader = None
         logger.info('Connection closed')
+

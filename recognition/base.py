@@ -1,40 +1,20 @@
-from audio.stream_settings import StreamSettings
+from audio import Stream
 from .audio_settings import AudioSettings
 
 
 class PhraseRecognizer(object):
-    def __init__(self, config):
+    def __init__(self, config, audio_settings: AudioSettings):
         self._config = config
-        self._data_arr = []
-
-    def get_audio_settings(self) -> AudioSettings:
-        raise Exception('Not implemented "get_audio_settings"')
+        self._audio_settings = audio_settings
 
     def get_config(self):
         return self._config
 
-    async def _recognize_start(self):
-        raise Exception('Not implemented "_recognize_start"')
+    def get_audio_settings(self) -> AudioSettings:
+        return self._audio_settings
 
-    async def recognize_start(self):
-        self._data_arr = []
-        await self._recognize_start()
-
-    async def _add_data(self, data):
-        raise Exception('Not implemented "_add_data"')
-
-    async def recognize_add_frames(self, raw_frame):
-        self._data_arr.append(raw_frame)
-        await self._add_data(raw_frame)
-
-    def recognize_finish(self):
-        raise Exception('Not implemented "recognize_finish"')
-
-    def get_all_data(self):
-        return b''.join(self._data_arr)
-
-    def close(self):
-        pass
+    async def recognize(self, stream: Stream, recv_callback):
+        raise Exception('Not implemented "recognize"')
 
 
 class HotwordRecognizer(object):

@@ -27,7 +27,7 @@ class Stream(object):
     def get_frames_count_by_duration_ms(self, ms):
         return int(ms * self._frames_ratio)
 
-    def read(self, ms):
+    async def read(self, ms):
         raise Exception('Not implementation read')
 
     def close(self):
