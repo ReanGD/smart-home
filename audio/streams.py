@@ -36,6 +36,9 @@ class Stream(object):
     async def read_full(self, min_ms):
         raise Exception('Not implementation "read_full"')
 
+    def crop_to(self, ms):
+        raise Exception('Not implementation "crop_to"')
+
     def close(self):
         raise Exception('Not implementation "close"')
 
@@ -120,6 +123,14 @@ class Microphone(Stream):
         await self._wait_data(cnt_buffers)
         return b''.join([self._audio_buffer.popleft() for _ in range(len(self._audio_buffer))])
 
+    def crop_to(self, ms):
+        total_cnt = len(self._audio_buffer)
+        leave_cnt = ms // 10
+        remove_cnt = max(0, total_cnt - leave_cnt)
+        if remove_cnt != 0:
+            for _ in range(remove_cnt):
+                self._audio_buffer.popleft()
+
     def close(self):
         try:
             if not pa.is_stream_stopped(self._stream):
@@ -147,6 +158,9 @@ class DataStream(Stream):
         start = self._offset
         self._offset = len(self._stream)
         return self._stream[self._offset:]
+
+    def crop_to(self, ms):
+        pass
 
     def close(self):
         self._stream = b''

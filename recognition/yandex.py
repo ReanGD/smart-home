@@ -32,6 +32,7 @@ class Yandex(PhraseRecognizer):
 
     async def recognize(self, stream: Stream, recv_callback):
         stream.start_stream()
+        stream.crop_to(100)
         self._is_continue = True
         self._recv_callback = recv_callback
         c = self.get_config()
