@@ -31,6 +31,7 @@ class Yandex(PhraseRecognizer):
         return self._is_continue
 
     async def recognize(self, stream: Stream, recv_callback):
+        stream.start_stream()
         self._is_continue = True
         self._recv_callback = recv_callback
         c = self.get_config()
@@ -39,7 +40,7 @@ class Yandex(PhraseRecognizer):
 
         await self._api.recv_loop_run(self._on_recv)
         while self._is_continue:
-            await self._api.send_audio_data(await stream.read(50))
+            await self._api.send_audio_data(await stream.read_full(50))
 
         self._api.close()
         self._last_text = ''

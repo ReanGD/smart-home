@@ -27,11 +27,17 @@ class Stream(object):
     def get_frames_count_by_duration_ms(self, ms):
         return int(ms * self._frames_ratio)
 
+    def start_stream(self):
+        raise Exception('Not implementation "start_stream"')
+
     async def read(self, ms):
-        raise Exception('Not implementation read')
+        raise Exception('Not implementation "read"')
+
+    async def read_full(self, min_ms):
+        raise Exception('Not implementation "read_full"')
 
     def close(self):
-        raise Exception('Not implementation close')
+        raise Exception('Not implementation "close"')
 
 
 class Microphone(Stream):
@@ -60,6 +66,12 @@ class Microphone(Stream):
         self._stream = pa.open(**arguments)
         self._is_started = False
 
+    def start_stream(self):
+        if not self._is_started:
+            if self._stream is not None:
+                self._is_started = True
+                pa.start_stream(self._stream)
+
     def _wakeup_waiter(self):
         waiter = self._waiter
         if waiter is not None:
@@ -79,13 +91,9 @@ class Microphone(Stream):
 
         return None, paContinue
 
-    async def read(self, ms=10):
-        if not self._is_started:
-            if self._stream is not None:
-                self._is_started = True
-                pa.start_stream(self._stream)
+    async def _wait_data(self, cnt_buffers):
+        self.start_stream()
 
-        cnt_buffers = ms // 10
         if len(self._audio_buffer) < cnt_buffers:
             self._lock.acquire()
             try:
@@ -102,7 +110,15 @@ class Microphone(Stream):
             finally:
                 self._waiter = None
 
+    async def read(self, ms=10):
+        cnt_buffers = ms // 10
+        await self._wait_data(cnt_buffers)
         return b''.join([self._audio_buffer.popleft() for _ in range(cnt_buffers)])
+
+    async def read_full(self, min_ms):
+        cnt_buffers = min_ms // 10
+        await self._wait_data(cnt_buffers)
+        return b''.join([self._audio_buffer.popleft() for _ in range(len(self._audio_buffer))])
 
     def close(self):
         try:
@@ -119,10 +135,18 @@ class DataStream(Stream):
         self._stream = data.get_raw_data()
         self._offset = 0
 
+    def start_stream(self):
+        pass
+
     async def read(self, ms):
         start = self._offset
         self._offset += (self.get_frames_count_by_duration_ms(ms) * self._settings.sample_width)
         return self._stream[start:self._offset]
+
+    async def read_full(self, min_ms):
+        start = self._offset
+        self._offset = len(self._stream)
+        return self._stream[self._offset:]
 
     def close(self):
         self._stream = b''
