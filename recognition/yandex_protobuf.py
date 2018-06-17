@@ -4,9 +4,9 @@ from sys import stdout
 from pyaudio import paInt16
 from audio import StreamSettings
 from .audio_settings import AudioSettings
-from .yandex_proto.basic_pb2 import ConnectionResponse
+from .yandex_api.basic_pb2 import ConnectionResponse
 from .base import PhraseRecognizer, PhraseRecognizerConfig
-from .yandex_proto.voiceproxy_pb2 import ConnectionRequest, AddData, AddDataResponse, AdvancedASROptions
+from .yandex_api.voiceproxy_pb2 import ConnectionRequest, AddData, AddDataResponse, AdvancedASROptions
 
 
 logger = logging.getLogger('yandex_protobuf')

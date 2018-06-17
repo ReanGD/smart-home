@@ -1,3 +1,3 @@
 #!/bin/bash
 
-protoc --proto_path=recognition/yandex_proto --python_out=recognition/yandex_proto recognition/yandex_proto/*.proto
+protoc --proto_path=recognition/yandex_api --python_out=recognition/yandex_api recognition/yandex_api/*.proto
