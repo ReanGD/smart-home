@@ -1,5 +1,5 @@
-from asyncio import open_connection, sleep
 from logging import getLogger
+from asyncio import open_connection, sleep
 
 
 logger = getLogger('yanader_transport')
@@ -77,7 +77,8 @@ class Transport(object):
         raise saved_exception
 
     def close(self):
-        self._writer.close()
-        self._writer = None
-        self._reader = None
+        if self._writer is not None:
+            self._writer.close()
+            self._writer = None
+            self._reader = None
         logger.info('Connection closed')

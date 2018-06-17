@@ -11,6 +11,10 @@ def init_logger():
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
 
+    logger = logging.getLogger('yandex_api')
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+
 
 async def run():
     print("start")

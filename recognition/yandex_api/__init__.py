@@ -12,3 +12,11 @@ from . import ttsbackend_pb2
 from . import voiceproxy_pb2
 
 sys.path.remove(current_dir)
+
+from .api import Api, YandexApiError
+from .transport import YandexTransportError
+
+__all__ = ['Api',
+           'YandexApiError',
+           'YandexTransportError',
+           ]
