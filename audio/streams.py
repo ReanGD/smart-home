@@ -119,7 +119,7 @@ class DataStream(Stream):
         self._stream = data.get_raw_data()
         self._offset = 0
 
-    def read(self, ms):
+    async def read(self, ms):
         start = self._offset
         self._offset += (self.get_frames_count_by_duration_ms(ms) * self._settings.sample_width)
         return self._stream[start:self._offset]

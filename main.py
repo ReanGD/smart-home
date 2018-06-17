@@ -6,9 +6,9 @@ async def run():
     print("start")
 
     # device_info.run()
-    await record.run(8)
+    # await record.run(8)
+    await yaproto.run(8)
     # voice_recognition.run(8)
-    # yaproto.run(8)
 
     # vad.run()
     # wrap_speech_recognition.run()

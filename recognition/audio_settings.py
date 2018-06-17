@@ -1,6 +1,5 @@
-from pyaudio import paInt16
 from typing import List
-from audio import StreamSettings, Device
+from audio import StreamSettings, paInt16
 
 
 class AudioSettings(object):
@@ -14,7 +13,7 @@ class AudioSettings(object):
         self.frames = frames
 
 
-def get_common_settings(device: Device, device_index: int,
+def get_common_settings(device_index: int,
                         settings: List[AudioSettings]) -> StreamSettings:
     channels = settings[0].channels
     sample_format = settings[0].sample_format
@@ -25,6 +24,4 @@ def get_common_settings(device: Device, device_index: int,
                 or sample_rate != setting.sample_rate):
             raise Exception("Settings are not consistent")
 
-    frames_per_buffer = max(settings, key=lambda s: s.frames).frames
-    return StreamSettings(device, device_index, channels, sample_format, sample_rate,
-                          frames_per_buffer)
+    return StreamSettings(device_index, channels, sample_format, sample_rate)

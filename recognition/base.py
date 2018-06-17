@@ -13,20 +13,19 @@ class PhraseRecognizer(object):
     def get_config(self):
         return self._config
 
-    def _recognize_start(self, data_settings: StreamSettings):
+    async def _recognize_start(self, data_settings: StreamSettings):
         raise Exception('Not implemented "_recognize_start"')
 
-    def recognize_start(self, data_settings: StreamSettings):
+    async def recognize_start(self, data_settings: StreamSettings):
         self._data_arr = []
-        self._recognize_start(data_settings)
+        await self._recognize_start(data_settings)
 
-    def _add_data(self, data):
+    async def _add_data(self, data):
         raise Exception('Not implemented "_add_data"')
 
-    def recognize_add_frames(self, raw_frames):
-        data = b''.join(raw_frames)
-        self._data_arr.append(data)
-        self._add_data(data)
+    async def recognize_add_frames(self, raw_frame):
+        self._data_arr.append(raw_frame)
+        await self._add_data(raw_frame)
 
     def recognize_finish(self):
         raise Exception('Not implemented "recognize_finish"')

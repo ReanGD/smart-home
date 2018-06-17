@@ -1,23 +1,20 @@
-import audio
 import config
+from audio import StreamSettings, Microphone
 
 
-def run(index=None):
-    device = audio.Device()
-    settings = audio.StreamSettings(device, device_index=index)
+async def run(index=None):
+    settings = StreamSettings(device_index=index)
     recognizer = config.yandex_protobuf.create_phrase_recognizer()
+    print("settings: {}".format(settings))
+
     try:
-        print("settings: {}".format(settings))
-        mic = device.create_microphone_stream(settings)
-        recognizer.recognize_start(settings)
-        print("start record...")
-
-        while True:
-            recognizer.recognize_add_frames([mic.read(settings.frames_per_buffer)])
-
-    except KeyboardInterrupt:
+        await recognizer.recognize_start(settings)
+        with Microphone(settings) as mic:
+            print("start record...")
+            while True:
+                await recognizer.recognize_add_frames(await mic.read(50))
+    except GeneratorExit:
         print("stop record...")
     finally:
         recognizer.recognize_finish()
         recognizer.close()
-        device.terminate()
