@@ -1,11 +1,11 @@
-# from .base import PhraseRecognizerConfig, HotwordRecognizerConfig, VADRecognizerConfig
 from .yandex import Yandex, YandexConfig
-# from .raw import Raw, RawConfig
-# from .psphinx import Pocketsphinx, PocketsphinxConfig
-# from .snowboy_wrap import Snowboy, SnowboyConfig
 # from .http_activation import HttpActivation, HttpActivationConfig
 # from .listener import Listener
+# from .raw import Raw, RawConfig
 # from .audio_settings import get_common_settings
+# from .snowboy_wrap import Snowboy, SnowboyConfig
+# from .psphinx import Pocketsphinx, PocketsphinxConfig
+# from .base import PhraseRecognizerConfig, HotwordRecognizerConfig, VADRecognizerConfig
 
 
 __all__ = [
