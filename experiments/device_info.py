@@ -1,7 +1,7 @@
 import audio
 
 
-def run():
+async def run():
     tmpl = '{}: "{}", maxInputChannels: {}, defaultSampleRate: {}'
     for ind in range(audio.StreamSettings.get_device_count()):
         info = audio.StreamSettings.get_device_info_by_index(ind)

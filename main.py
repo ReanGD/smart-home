@@ -21,11 +21,11 @@ def init_logger():
 async def run():
     print("start")
 
-    # device_info.run()
+    # await device_info.run()
     # await record.run(8)
-    await yaproto.run(8)
-    # voice_recognition.run(8)
+    await demo.run(8)
 
+    # voice_recognition.run(8)
     # vad.run()
     # wrap_speech_recognition.run()
     # skills.run()

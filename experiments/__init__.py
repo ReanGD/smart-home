@@ -1,7 +1,7 @@
 __all__ = [
     'device_info',
     'record',
-    'yaproto',
+    'demo',
     # 'voice_recognition',
     # 'wrap_speech_recognition',
     # 'hotword',
