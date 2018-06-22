@@ -1,4 +1,4 @@
-room = {
+place = {
     'hall': ['коридор','прихожая'],
     'kitchen': ['кухня'],
     'toilet': ['туалет'],
@@ -9,19 +9,19 @@ room = {
     'here': ['здесь','тут'],
 }
 
-room_device = {
+device = {
     'light': ['свет','освещение','лампочка','люстра'],
     'tv': ['телевизор'],
     'music': ['колонка','музыка'],
 }
 
-room_device_action = {
+device_action = {
     'turn_on': ['включить','зажечь','врубить','зажги'],
     'turn_off': ['выключить','вырубить'],
 }
 
 all_entitis = {
-    'room': room,
-    'room_device': room_device,
-    'room_device_action': room_device_action,
+    'place': place,
+    'device': device,
+    'device_action': device_action,
 }
