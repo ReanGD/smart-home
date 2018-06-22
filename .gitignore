@@ -14,7 +14,4 @@ samples_out/
 pocketsphinx/
 
 #proto
-recognition/yandex_api/basic_pb2.py
-recognition/yandex_api/ttsbackend_pb2.py
-recognition/yandex_api/tts_pb2.py
-recognition/yandex_api/voiceproxy_pb2.py
+**/*_pb2.py
