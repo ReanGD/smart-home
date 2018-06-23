@@ -1,49 +1,33 @@
 import asyncio
 
 
-class BaseTransportError(RuntimeError):
+class ProtoTransportError(RuntimeError):
     def __init__(self, message):
         RuntimeError.__init__(self, message)
 
 
+class SerrializeProtocol(object):
+    async def send_protobuf(self, writer, message):
+        raise Exception('Not implementation "send_protobuf"')
+
+    async def recv_protobuf(self, reader):
+        raise Exception('Not implementation "recv_protobuf"')
+
+
 class ProtoConnection(object):
-    def __init__(self, reader, writer, handler, protobuf_types, logger):
-        self.logger = logger
+    def __init__(self, reader, writer, handler, protocol: SerrializeProtocol, logger):
+        self._logger = logger
         self._reader = reader
         self._writer = writer
         self._handler = handler
-        self._protobuf_types = protobuf_types
+        self._protocol = protocol
         self._recv_loop_task = None
 
     async def send_protobuf(self, message):
-        data_bin = message.SerializeToString()
-        data_len = len(data_bin)
-        self.logger.debug('Send protobuf message "%s" (%d bytes)',
-                          message.DESCRIPTOR.name, data_len)
-        self._writer.write(hex(data_len)[2:].encode("utf-8"))
-        self._writer.write(b'\r\n')
-        self._writer.write(data_bin)
-        await self._writer.drain()
+        await self._protocol.send_protobuf(self._writer, message)
 
     async def recv_protobuf(self):
-        size_bin = await self._reader.readuntil(b'\r\n')
-        size_int = int(b'0x' + size_bin[:-2], 0)
-        data_bin = await self._reader.readexactly(size_int)
-
-        saved_exception = None
-        for proto_type in self._protobuf_types:
-            message = proto_type()
-            try:
-                message.ParseFromString(data_bin)
-                self.logger.debug('Recv protobuf message "%s" (%d bytes)',
-                                  message.DESCRIPTOR.name, size_int)
-                return message
-            except Exception as exc:
-                saved_exception = exc
-
-        self.logger.debug('Recv unknown protobuf message (%d bytes)',
-                          size_int)
-        raise saved_exception
+        return await self._protocol.recv_protobuf(self._reader)
 
     async def run_recv_loop(self):
         self._recv_loop_task = asyncio.ensure_future(self._recv_loop())
@@ -51,19 +35,21 @@ class ProtoConnection(object):
 
     async def _recv_loop(self):
         try:
-            self.logger.info('recv loop started')
+            self._logger.info('recv loop started')
             while True:
                 response = await self.recv_protobuf()
                 func = getattr(self._handler, 'on_' + response.DESCRIPTOR.name)
                 await func(self._handler, self, response)
         except asyncio.futures.CancelledError:
-            pass
+            self._logger.error('except')
+        except Exception as e:
+            self._logger.error('except = %s', e)
         finally:
             self._recv_loop_task = None
-            self.logger.info('recv loop finished')
+            self._logger.info('recv loop finished')
 
     async def close(self):
-        self.logger.info('Connection close started')
+        self._logger.info('Connection close started')
         if self._recv_loop_task is not None:
             task = self._recv_loop_task
             task.cancel()
@@ -76,7 +62,7 @@ class ProtoConnection(object):
 
         self._reader = None
         self._handler = None
-        self.logger.info('Connection close finished')
+        self._logger.info('Connection close finished')
 
 
 class ProtoServer(object):
@@ -88,7 +74,7 @@ class ProtoServer(object):
         self._connections.add(connection)
 
 
-async def create_client(host: str, port: int, handler_class, protobuf_types, logger,
+async def create_client(host: str, port: int, handler_class, protocol: SerrializeProtocol, logger,
                         max_attempt: int=5) -> ProtoConnection:
     logger.info('Start connecting to %s:%d', host, port)
 
@@ -101,7 +87,7 @@ async def create_client(host: str, port: int, handler_class, protobuf_types, log
                 logger.info('Connection attempt %d', attempt + 1)
 
             reader, writer = await asyncio.open_connection(host, port, ssl=ssl)
-            connection = ProtoConnection(reader, writer, handler, protobuf_types, logger)
+            connection = ProtoConnection(reader, writer, handler, protocol, logger)
             logger.info('Connected to %s:%s', host, port)
             break
         except ConnectionRefusedError as ex:
@@ -118,13 +104,14 @@ async def create_client(host: str, port: int, handler_class, protobuf_types, log
     return connection
 
 
-async def create_server(host: str, port: int, handler_class, protobuf_types, logger) -> ProtoServer:
+async def create_server(host: str, port: int, handler_class, protocol: SerrializeProtocol,
+                        logger) -> ProtoServer:
     logger.info('Start server on %s:%d', host, port)
     server = None
 
     async def on_accept(reader, writer):
         logger.info('Accept connect')
-        connection = ProtoConnection(reader, writer, handler_class, protobuf_types, logger)
+        connection = ProtoConnection(reader, writer, handler_class, protocol, logger)
         server.add_connection(connection)
         recv_loop = await connection.run_recv_loop()
         asyncio.wait(recv_loop)

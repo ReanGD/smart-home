@@ -55,7 +55,3 @@ class TestNPL(unittest.TestCase):
                 del result['unknown']
 
             self.assertEqual(result, expect)
-
-
-if __name__ == '__main__':
-    unittest.main()

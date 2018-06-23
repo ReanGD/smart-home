@@ -1,7 +1,9 @@
-from .base_transport import ProtoConnection, create_client, create_server
+from .base_transport import *
 
 
 __all__ = [
+    'ProtoTransportError',
+    'SerrializeProtocol',
     'ProtoConnection',
     'create_client',
     'create_server',

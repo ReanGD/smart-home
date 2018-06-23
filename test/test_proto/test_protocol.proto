@@ -1,0 +1,12 @@
+syntax = "proto2";
+
+
+message TestMessage
+{
+    required string text = 1;
+}
+
+message TestMessageResult
+{
+    required string text = 1;
+}
