@@ -15,13 +15,16 @@ class SerrializeProtocol(object):
 
 
 class ProtoConnection(object):
-    def __init__(self, reader, writer, handler, protocol: SerrializeProtocol, logger):
+    def __init__(self, reader: asyncio.streams.StreamReader, writer: asyncio.streams.StreamWriter,
+                 handler, protocol: SerrializeProtocol, logger, is_server: bool):
         self._logger = logger
         self._reader = reader
         self._writer = writer
         self._handler = handler
         self._protocol = protocol
+        self._is_server = is_server
         self._recv_loop_task = None
+        self._start_close = False
 
     async def send_protobuf(self, message):
         if self._writer is None:
@@ -57,7 +60,12 @@ class ProtoConnection(object):
             self._logger.info('Finished recv loop')
 
     async def close(self):
+        if self._start_close:
+            self._logger.info('Double close')
+            return
+
         self._logger.info('Connection close started')
+        self._start_close = True
         if self._recv_loop_task is not None:
             self._reader.feed_eof()
             await asyncio.wait([self._recv_loop_task])
@@ -86,7 +94,7 @@ async def create_client(host: str, port: int, handler_factory, protocol: Serrial
                 logger.info('Connection attempt %d', attempt + 1)
 
             reader, writer = await asyncio.open_connection(host, port, ssl=ssl)
-            connection = ProtoConnection(reader, writer, handler, protocol, logger)
+            connection = ProtoConnection(reader, writer, handler, protocol, logger, False)
             logger.info('Connected to %s:%s', host, port)
             break
         except ConnectionRefusedError as ex:
@@ -104,17 +112,82 @@ async def create_client(host: str, port: int, handler_factory, protocol: Serrial
 
 
 class ProtoServer(object):
-    def __init__(self, task):
+    def __init__(self, server):
         self._connections = set()
-        self._server_task = asyncio.ensure_future(task)
+        self._server = server
+        self._server_task = asyncio.ensure_future(server)
 
     def add_connection(self, connection: ProtoConnection):
         self._connections.add(connection)
+
+    def remove_connection(self, connection: ProtoConnection):
+        self._connections.remove(connection)
 
     async def close(self):
         # TODO close all
         for connection in self._connections:
             await connection.close()
+
+        self._connections.clear()
+        self._server.close()
+
+
+class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
+    def __init__(self, server: ProtoServer, handler_factory, protocol, logger):
+        super().__init__()
+        self._server = server
+        self._handler = handler_factory()
+        self._protocol = protocol
+        self._logger = logger
+
+        self._stream_reader = asyncio.StreamReader()
+        self._connection = None
+        self._over_ssl = False
+
+    def connection_made(self, transport):
+        self._logger.info('Accept connect')
+        self._stream_reader.set_transport(transport)
+        self._over_ssl = transport.get_extra_info('sslcontext') is not None
+        stream_writer = asyncio.StreamWriter(transport, self, self._stream_reader, self._loop)
+
+        self._connection = ProtoConnection(self._stream_reader, stream_writer, self._handler,
+                                           self._protocol, self._logger, True)
+        self._server.add_connection(self._connection)
+        self._loop.create_task(self.on_accept())
+
+    async def on_accept(self):
+        try:
+            recv_loop = await self._connection.run_recv_loop()
+            asyncio.wait(recv_loop)
+        except Exception as e:
+            self._logger.error('unknown exception 2: %s', e)
+        finally:
+            self._logger.info('Connect was closed')
+
+    def connection_lost(self, exc):
+        self._logger.debug('connection_lost')
+        if self._stream_reader is not None:
+            if exc is None:
+                self._stream_reader.feed_eof()
+            else:
+                self._stream_reader.set_exception(exc)
+        super().connection_lost(exc)
+        self._stream_reader = None
+
+    def data_received(self, data):
+        self._stream_reader.feed_data(data)
+
+    def eof_received(self):
+        self._server.remove_connection(self._connection)
+        asyncio.ensure_future(self._connection.close())
+        self._stream_reader = None
+
+        if self._over_ssl:
+            # Prevent a warning in SSLProtocol.eof_received:
+            # "returning true from eof_received()
+            # has no effect when using ssl"
+            return False
+        return True
 
 
 async def create_server(host: str, port: int, handler_factory, protocol: SerrializeProtocol,
@@ -122,17 +195,8 @@ async def create_server(host: str, port: int, handler_factory, protocol: Serrial
     logger.info('Start server on %s:%d', host, port)
     server = None
 
-    async def on_accept(reader, writer):
-        logger.info('Accept connect')
-        connection = ProtoConnection(reader, writer, handler_factory(), protocol, logger)
-        server.add_connection(connection)
-        try:
-            recv_loop = await connection.run_recv_loop()
-            asyncio.wait(recv_loop)
-        except Exception as e:
-            logger.error('unknown exception 2: %s', e)
-        finally:
-            logger.info('Connect was closed')
+    def factory():
+        return ServerStreamReaderProtocol(server, handler_factory, protocol, logger)
 
-    server = ProtoServer(asyncio.start_server(on_accept, host, port))
+    server = ProtoServer(asyncio.get_event_loop().create_server(factory, host, port))
     return server

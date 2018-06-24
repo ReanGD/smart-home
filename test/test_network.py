@@ -71,6 +71,8 @@ class TestNetwork(unittest.TestCase):
             await client.send_protobuf(TestMessage1(text='Request'))
             await asyncio.sleep(1)
             await client.close()
+            await asyncio.sleep(1)
             await server.close()
+            await asyncio.sleep(1)
 
         asyncio.get_event_loop().run_until_complete(client_server())
