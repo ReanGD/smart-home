@@ -1,12 +1,22 @@
 syntax = "proto2";
 
 
-message TestMessage
+message TestMessage1
 {
     required string text = 1;
 }
 
-message TestMessageResult
+message TestMessage1Result
+{
+    required string text = 1;
+}
+
+message TestMessage2
+{
+    required string text = 1;
+}
+
+message TestMessage2Result
 {
     required string text = 1;
 }

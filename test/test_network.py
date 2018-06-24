@@ -1,6 +1,6 @@
 import unittest
 import asyncio
-from test.test_proto import TestMessage, TestMessageResult
+from test.test_proto import *
 from protocols.transport import ProtoConnection, create_server, create_client
 from protocols.home_assistant import HASerrializeProtocol
 
@@ -8,61 +8,69 @@ import logging
 from sys import stdout
 
 
-class HandlerServer(object):
-    async def on_TestMessage(self, conn: ProtoConnection, message: TestMessage):
-        await conn.send_protobuf(TestMessageResult(text = message.text + 'Result'))
+class HandlerMain(object):
+    def __init__(self):
+        self.recv_messages = []
 
-    async def on_TestMessageResult(self, conn: ProtoConnection, message: TestMessageResult):
-        pass
-
-
-class HandlerClient(object):
     async def on_connect(self):
         pass
 
-    async def on_TestMessage(self, conn: ProtoConnection, message: TestMessage):
-        await conn.send_protobuf(TestMessageResult(text=message.text + 'Result'))
+    async def on_TestMessage1(self, conn: ProtoConnection, message: TestMessage1):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        await conn.send_protobuf(TestMessage1Result(text=message.DESCRIPTOR.name+'Response'))
 
-    async def on_TestMessageResult(self, conn: ProtoConnection, message: TestMessageResult):
-        await conn.send_protobuf(TestMessageResult(text=message.text + 'Result'))
+    async def on_TestMessage1Result(self, conn: ProtoConnection, message: TestMessage1Result):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        await conn.send_protobuf(TestMessage2(text=message.DESCRIPTOR.name+'Request'))
+
+    async def on_TestMessage2(self, conn: ProtoConnection, message: TestMessage2):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        await conn.send_protobuf(TestMessage2Result(text=message.DESCRIPTOR.name+'Response'))
+
+    async def on_TestMessage2Result(self, conn: ProtoConnection, message: TestMessage2Result):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        pass
 
 
 class TestNetwork(unittest.TestCase):
     def setUp(self):
         self.host = '127.0.0.1'
         self.port = 8888
-        types = [TestMessage, TestMessageResult]
-        self.server_logger = TestNetwork.get_logger('server')
-        self.server_protocol = HASerrializeProtocol(types, self.server_logger)
-        self.client_logger = TestNetwork.get_logger('client')
-        self.client_protocol = HASerrializeProtocol(types, self.client_logger)
+        types = [TestMessage1, TestMessage1Result, TestMessage2, TestMessage2Result]
 
-    @staticmethod
-    def get_logger(logger_name):
-        handler = logging.StreamHandler(stdout)
+        self.log_handler = logging.StreamHandler(stdout)
         formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
-        handler.setFormatter(formatter)
+        self.log_handler.setFormatter(formatter)
 
+        self.server_protocol = HASerrializeProtocol(types, self.get_logger('server'))
+        self.client_protocol = HASerrializeProtocol(types, self.get_logger('client'))
+
+    def tearDown(self):
+        asyncio.get_event_loop().close()
+
+    def get_logger(self, logger_name):
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.DEBUG)
-        logger.addHandler(handler)
+        logger.addHandler(self.log_handler)
 
         return logger
 
-    async def create_server(self, handler_class):
-        return await create_server(self.host, self.port, handler_class, self.server_protocol,
-                                   self.server_logger)
+    async def create_server(self, handler_factory):
+        return await create_server(self.host, self.port, handler_factory, self.server_protocol,
+                                   self.get_logger('server'))
 
-    async def create_client(self, handler_class):
-        return await create_client(self.host, self.port, handler_class, self.client_protocol,
-                                   self.client_logger)
-
-    async def client_server(self):
-        server = await self.create_server(HandlerServer)
-        client = await self.create_client(HandlerClient)
-
-        await client.send_protobuf(TestMessage(text='Hello'))
-        await asyncio.sleep(1)
+    async def create_client(self, handler_factory):
+        return await create_client(self.host, self.port, handler_factory, self.client_protocol,
+                                   self.get_logger('client'))
 
     def test_client_server(self):
-        asyncio.get_event_loop().run_until_complete(self.client_server())
+        async def client_server():
+            server = await self.create_server(HandlerMain)
+            client = await self.create_client(HandlerMain)
+
+            await client.send_protobuf(TestMessage1(text='Request'))
+            await asyncio.sleep(1)
+            await client.close()
+            await server.close()
+
+        asyncio.get_event_loop().run_until_complete(client_server())
