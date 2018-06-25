@@ -17,6 +17,10 @@ def init_logger():
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
 
+    logger = logging.getLogger('demo')
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+
 
 async def run():
     print("start")
