@@ -112,10 +112,10 @@ async def create_client(host: str, port: int, handler_factory, protocol: Serrial
 
 
 class ProtoServer(object):
-    def __init__(self, server):
+    def __init__(self, server_coro, logger):
         self._connections = set()
-        self._server = server
-        self._server_task = asyncio.ensure_future(server)
+        self._logger = logger
+        self._server_task = asyncio.ensure_future(server_coro)
 
     def add_connection(self, connection: ProtoConnection):
         self._connections.add(connection)
@@ -124,12 +124,14 @@ class ProtoServer(object):
         self._connections.remove(connection)
 
     async def close(self):
-        # TODO close all
-        for connection in self._connections:
-            await connection.close()
-
+        close_arr = [connection.close() for connection in self._connections]
+        await asyncio.gather(*close_arr)
         self._connections.clear()
-        self._server.close()
+
+        server = self._server_task.result()
+        server.close()
+        await server.wait_closed()
+        self._logger.info('Server closed')
 
 
 class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
@@ -153,6 +155,7 @@ class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
         self._connection = ProtoConnection(self._stream_reader, stream_writer, self._handler,
                                            self._protocol, self._logger, True)
         self._server.add_connection(self._connection)
+        # TODO: remove task?
         self._loop.create_task(self.on_accept())
 
     async def on_accept(self):
@@ -160,7 +163,7 @@ class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
             recv_loop = await self._connection.run_recv_loop()
             asyncio.wait(recv_loop)
         except Exception as e:
-            self._logger.error('unknown exception 2: %s', e)
+            self._logger.error('unknown exception: %s', e)
         finally:
             self._logger.info('Connect was closed')
 
@@ -198,5 +201,5 @@ async def create_server(host: str, port: int, handler_factory, protocol: Serrial
     def factory():
         return ServerStreamReaderProtocol(server, handler_factory, protocol, logger)
 
-    server = ProtoServer(asyncio.get_event_loop().create_server(factory, host, port))
+    server = ProtoServer(asyncio.get_event_loop().create_server(factory, host, port), logger)
     return server
