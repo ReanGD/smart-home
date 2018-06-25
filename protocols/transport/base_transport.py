@@ -64,7 +64,7 @@ class ProtoConnection(object):
             self._logger.info('Double close')
             return
 
-        self._logger.info('Connection close started')
+        self._logger.debug('Connection close started')
         self._start_close = True
         if self._recv_loop_task is not None:
             self._reader.feed_eof()
@@ -123,15 +123,20 @@ class ProtoServer(object):
     def remove_connection(self, connection: ProtoConnection):
         self._connections.remove(connection)
 
+    async def send_protobuf_to_all(self, message):
+        tasks = [connection.send_protobuf(message) for connection in self._connections]
+        await asyncio.gather(*tasks)
+
     async def close(self):
-        close_arr = [connection.close() for connection in self._connections]
-        await asyncio.gather(*close_arr)
+        self._logger.debug('Server close started')
+        tasks = [connection.close() for connection in self._connections]
+        await asyncio.gather(*tasks)
         self._connections.clear()
 
         server = self._server_task.result()
         server.close()
         await server.wait_closed()
-        self._logger.info('Server closed')
+        self._logger.info('Sever close finished')
 
 
 class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):

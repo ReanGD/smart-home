@@ -8,8 +8,13 @@ import logging
 from sys import stdout
 
 
+log_handler = logging.StreamHandler(stdout)
+log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
+
+
 class HandlerMain(object):
-    def __init__(self):
+    def __init__(self, event: asyncio.Event):
+        self.event = event
         self.recv_messages = []
 
     async def on_connect(self):
@@ -29,29 +34,23 @@ class HandlerMain(object):
 
     async def on_TestMessage2Result(self, conn: ProtoConnection, message: TestMessage2Result):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
-        pass
+        self.event.set()
 
 
 class TestNetwork(unittest.TestCase):
     def setUp(self):
         self.host = '127.0.0.1'
         self.port = 8888
+        self.finish_event = asyncio.Event()
         types = [TestMessage1, TestMessage1Result, TestMessage2, TestMessage2Result]
-
-        self.log_handler = logging.StreamHandler(stdout)
-        formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
-        self.log_handler.setFormatter(formatter)
 
         self.server_protocol = HASerrializeProtocol(types, self.get_logger('server'))
         self.client_protocol = HASerrializeProtocol(types, self.get_logger('client'))
 
-    def tearDown(self):
-        asyncio.get_event_loop().close()
-
     def get_logger(self, logger_name):
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.DEBUG)
-        logger.addHandler(self.log_handler)
+        logger.addHandler(log_handler)
 
         return logger
 
@@ -63,15 +62,33 @@ class TestNetwork(unittest.TestCase):
         return await create_client(self.host, self.port, handler_factory, self.client_protocol,
                                    self.get_logger('client'))
 
-    def test_client_server(self):
+    def handler_generator(self):
+        return HandlerMain(self.finish_event)
+
+    def test_client_send(self):
         async def client_server():
-            server = await self.create_server(HandlerMain)
-            client = await self.create_client(HandlerMain)
+            server = await self.create_server(self.handler_generator)
+            client = await self.create_client(self.handler_generator)
 
             await client.send_protobuf(TestMessage1(text='Request'))
-            await asyncio.sleep(0.5)
+
+            await self.finish_event.wait()
             await client.close()
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.1)
+            await server.close()
+
+        asyncio.get_event_loop().run_until_complete(client_server())
+
+    def test_server_send(self):
+        async def client_server():
+            server = await self.create_server(self.handler_generator)
+            client = await self.create_client(self.handler_generator)
+
+            await server.send_protobuf_to_all(TestMessage1(text='Request'))
+
+            await self.finish_event.wait()
+            await client.close()
+            await asyncio.sleep(0.1)
             await server.close()
 
         asyncio.get_event_loop().run_until_complete(client_server())
