@@ -33,7 +33,7 @@ class Demo(object):
 
     async def create_client(self):
         protocol = HASerrializeProtocol([StartRecognition], logger)
-        return await create_client('127.0.0.1', 8888, HomeAssistentHandler, protocol, logger)
+        return await create_client('127.0.0.1', 8083, HomeAssistentHandler, protocol, logger)
 
     async def run(self):
         with Microphone(self._settings) as mic:
@@ -41,7 +41,7 @@ class Demo(object):
             await self._recognizer.recognize(mic, self.recv_callback)
             logger.info('stop record...')
 
-    def _analyze(self, text):
+    async def _analyze(self, text):
         cmd = self._morph.analyze(text)
         success = 'place' in cmd and 'device' in cmd and 'device_action' in cmd
         if success:
@@ -104,7 +104,7 @@ class Demo(object):
                     raise RuntimeError('unknown place = {}'.format(cmd['place']))
 
                 msg = SetDeviceState(device_action=device_action, device=device, place=place)
-                self._client.send_protobuf(msg)
+                await self._client.send_protobuf(msg)
 
         return success, cmd
 
@@ -112,14 +112,14 @@ class Demo(object):
         if not is_phrase_finished:
             text = phrases[0]
             logger.debug(text)
-            success, cmd = self._analyze(text)
+            success, cmd = await self._analyze(text)
 
             return not success
         else:
             logger.debug('Final result:')
             for text in phrases:
                 logger.debug(text)
-                self._analyze(text)
+                await self._analyze(text)
 
             return False
 
