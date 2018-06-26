@@ -5,7 +5,8 @@ from etc import all_entitis
 from logging import getLogger
 from audio import StreamSettings, Microphone
 from protocols.transport import ProtoConnection, create_client
-from protocols.home_assistant import HASerrializeProtocol, StartRecognition, SetDeviceState
+from protocols.home_assistant import (HASerrializeProtocol, StartRecognition, SetDeviceState,
+                                      entity_to_protobuf)
 
 
 logger = getLogger('demo')
@@ -50,60 +51,13 @@ class Demo(object):
                 asyncio.wait(self._client_future)
                 self._client = self._client_future.result()
 
-                #   enum DeviceAction {
-                #     TurnOff = 0;
-                #     TurnOn = 1;
-                #   }
+                device_action = entity_to_protobuf('device_action', cmd['device_action'])
+                device = entity_to_protobuf('device', cmd['device'])
+                place = entity_to_protobuf('place', cmd['place'])
 
-                if cmd['device_action'] == 'turn_off':
-                    device_action = 0
-                elif cmd['device_action'] == 'turn_on':
-                    device_action = 1
-                else:
-                    raise RuntimeError('unknown device_action = {}'.format(cmd['device_action']))
-
-                #   enum Device {
-                #     Light = 0;
-                #     TV = 1;
-                #     Music = 2;
-                #   }
-                if cmd['device'] == 'light':
-                    device = 0
-                else:
-                    logger.info('Unsaported device: {}'.format(cmd['device']))
-                    return
-
-                #   enum Place {
-                #     All = 0;
-                #     Here = 1;
-                #     Hall = 2;
-                #     Kitchen = 3;
-                #     Toilet = 4;
-                #     Bathroom = 5;
-                #     Livingroom = 6;
-                #     Playroom = 7;
-                #   }
-
-                if cmd['place'] == 'all':
-                    place = 0
-                elif cmd['place'] == 'here':
-                    place = 1
-                elif cmd['place'] == 'hall':
-                    place = 2
-                elif cmd['place'] == 'kitchen':
-                    place = 3
-                elif cmd['place'] == 'toilet':
-                    place = 4
-                elif cmd['place'] == 'bathroom':
-                    place = 5
-                elif cmd['place'] == 'livingroom':
-                    place = 6
-                elif cmd['place'] == 'playroom':
-                    place = 7
-                else:
-                    raise RuntimeError('unknown place = {}'.format(cmd['place']))
-
-                msg = SetDeviceState(device_action=device_action, device=device, place=place)
+                msg = SetDeviceState(device_action=device_action,
+                                     device=device,
+                                     place=place)
                 await self._client.send_protobuf(msg)
 
         return success, cmd

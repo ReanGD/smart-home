@@ -1,6 +1,5 @@
-import asyncio
-from protocols.transport import ProtoConnection, create_server, create_client
-from protocols.home_assistant import HASerrializeProtocol, SetDeviceState
+from protocols.transport import ProtoConnection, create_server
+from protocols.home_assistant import HASerrializeProtocol, SetDeviceState, protobuf_to_device_id
 
 import logging
 from sys import stdout
@@ -22,8 +21,14 @@ class HomeAssistentHandler(object):
         pass
 
     async def on_SetDeviceState(self, conn: ProtoConnection, message: SetDeviceState):
-        logger.error('on handle')
-        switch.async_turn_off(self._hass, 'switch.hall_switch_right_ceiling_light')
+        ids = protobuf_to_device_id(message.device, message.place, message.device_action)
+        for device_id in ids:
+            if message.device_action == SetDeviceState.TurnOff:
+                switch.async_turn_off(self._hass, device_id)
+            elif message.device_action == SetDeviceState.TurnOn:
+                switch.async_turn_on(self._hass, device_id)
+            else:
+                pass
 
 
 async def run(hass):
