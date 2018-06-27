@@ -1,16 +1,11 @@
-from protocols.transport import ProtoConnection, create_server
-from protocols.home_assistant import HASerrializeProtocol, SetDeviceState, protobuf_to_device_id
-
 import logging
-from sys import stdout
+from protocols.transport import ProtoConnection, create_server
+from protocols.home_assistant import (HASerrializeProtocol, StartRecognition, SetDeviceState,
+                                      protobuf_to_device_id)
 import homeassistant.components.switch as switch
 
 
-log_handler = logging.StreamHandler(stdout)
-log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
-logger = logging.getLogger('demo')
-logger.setLevel(logging.DEBUG)
-logger.addHandler(log_handler)
+logger = logging.getLogger('homeassistant.core')
 
 
 class HomeAssistentHandler(object):
@@ -31,9 +26,26 @@ class HomeAssistentHandler(object):
                 pass
 
 
-async def run(hass):
-    def handler_factory():
-        return HomeAssistentHandler(hass)
+class HomeAssistentServer(object):
+    def __init__(self, hass, config):
+        # activate_timeout = config['voice_commands'].get('activate_timeout', 10)
+        self._hass = hass
+        self._server = None
 
-    protocol = HASerrializeProtocol([SetDeviceState], logger)
-    await create_server('127.0.0.1', 8083, handler_factory, protocol, logger)
+    def handler_factory(self):
+        return HomeAssistentHandler(self._hass)
+
+    async def activate_handle(self, call):
+        await self._server.send_protobuf_to_all(StartRecognition())
+
+    async def run(self, domain):
+        protocol = HASerrializeProtocol([SetDeviceState], logger)
+        self._server = await create_server('0.0.0.0', 8083, self.handler_factory, protocol, logger)
+        self._hass.services.async_register(domain, 'activate', self.activate_handle)
+
+
+async def run(domain, hass, config) -> bool:
+    server = HomeAssistentServer(hass, config)
+    await server.run(domain)
+
+    return True

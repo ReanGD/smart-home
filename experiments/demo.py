@@ -13,14 +13,14 @@ logger = getLogger('demo')
 
 
 class HomeAssistentHandler(object):
-    def __init__(self):
-        pass
+    def __init__(self, event):
+        self._event = event
 
     async def on_connect(self):
         pass
 
     async def on_StartRecognition(self, conn: ProtoConnection, message: StartRecognition):
-        pass
+        self._event.set()
 
 
 class Demo(object):
@@ -28,37 +28,39 @@ class Demo(object):
         self._morph = Morphology(all_entitis)
         self._settings = StreamSettings(device_index=index)
         self._recognizer = config.yandex.create_phrase_recognizer()
-        self._client_future = asyncio.ensure_future(self.create_client())
+        self._start_recognition_event = asyncio.Event()
         self._client = None
         logger.debug('settings: {}'.format(self._settings))
 
-    async def create_client(self):
-        protocol = HASerrializeProtocol([StartRecognition], logger)
-        return await create_client('127.0.0.1', 8083, HomeAssistentHandler, protocol, logger)
+    def handler_factory(self):
+        return HomeAssistentHandler(self._start_recognition_event)
 
     async def run(self):
+        protocol = HASerrializeProtocol([StartRecognition], logger)
+        self._client = await create_client('127.0.0.1', 8083, self.handler_factory, protocol,
+                                           logger)
+
         with Microphone(self._settings) as mic:
-            logger.info('start record...')
-            await self._recognizer.recognize(mic, self.recv_callback)
-            logger.info('stop record...')
+            while True:
+                await self._start_recognition_event.wait()
+                logger.info('start recognize...')
+                await self._recognizer.recognize(mic, self.recv_callback)
+                self._start_recognition_event.clear()
+                logger.info('stop recognize...')
 
     async def _analyze(self, text):
         cmd = self._morph.analyze(text)
         success = 'place' in cmd and 'device' in cmd and 'device_action' in cmd
         if success:
             logger.info('Found command: {}'.format(cmd))
-            if self._client is None:
-                asyncio.wait(self._client_future)
-                self._client = self._client_future.result()
+            device_action = entity_to_protobuf('device_action', cmd['device_action'])
+            device = entity_to_protobuf('device', cmd['device'])
+            place = entity_to_protobuf('place', cmd['place'])
 
-                device_action = entity_to_protobuf('device_action', cmd['device_action'])
-                device = entity_to_protobuf('device', cmd['device'])
-                place = entity_to_protobuf('place', cmd['place'])
-
-                msg = SetDeviceState(device_action=device_action,
-                                     device=device,
-                                     place=place)
-                await self._client.send_protobuf(msg)
+            msg = SetDeviceState(device_action=device_action,
+                                 device=device,
+                                 place=place)
+            await self._client.send_protobuf(msg)
 
         return success, cmd
 
