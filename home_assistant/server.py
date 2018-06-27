@@ -15,7 +15,7 @@ class HomeAssistentHandler(object):
     async def on_connect(self):
         pass
 
-    async def on_SetDeviceState(self, conn: ProtoConnection, message: SetDeviceState):
+    async def on_set_device_state(self, conn: ProtoConnection, message: SetDeviceState):
         ids = protobuf_to_device_id(message.device, message.place, message.device_action)
         for device_id in ids:
             if message.device_action == SetDeviceState.TurnOff:

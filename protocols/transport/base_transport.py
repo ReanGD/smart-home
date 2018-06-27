@@ -1,4 +1,9 @@
 import asyncio
+from re import compile
+
+
+LOWER_CASE_FIRST_RE = compile('(.)([A-Z][a-z]+)')
+LOWER_CASE_SECOND_RE = compile('([a-z0-9])([A-Z])')
 
 
 class ProtoTransportError(RuntimeError):
@@ -47,8 +52,11 @@ class ProtoConnection(object):
             self._logger.info('recv loop started')
             while True:
                 response = await self.recv_protobuf()
-                method = getattr(self._handler, 'on_' + response.DESCRIPTOR.name)
-                await method(self, response)
+
+                handler_name = LOWER_CASE_FIRST_RE.sub(r'\1_\2', response.DESCRIPTOR.name)
+                handler_name = 'on_' + LOWER_CASE_SECOND_RE.sub(r'\1_\2', handler_name).lower()
+                handler = getattr(self._handler, handler_name)
+                await handler(self, response)
         except asyncio.CancelledError:
             self._logger.debug('The receiving cycle is stopped by cancel')
         except asyncio.IncompleteReadError:

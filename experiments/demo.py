@@ -19,7 +19,7 @@ class HomeAssistentHandler(object):
     async def on_connect(self):
         pass
 
-    async def on_StartRecognition(self, conn: ProtoConnection, message: StartRecognition):
+    async def on_start_recognition(self, conn: ProtoConnection, message: StartRecognition):
         self._event.set()
 
 
@@ -37,7 +37,7 @@ class Demo(object):
 
     async def run(self):
         protocol = HASerrializeProtocol([StartRecognition], logger)
-        self._client = await create_client('127.0.0.1', 8083, self.handler_factory, protocol,
+        self._client = await create_client('192.168.1.20', 8083, self.handler_factory, protocol,
                                            logger)
 
         with Microphone(self._settings) as mic:

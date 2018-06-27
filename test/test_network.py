@@ -20,19 +20,19 @@ class HandlerMain(object):
     async def on_connect(self):
         pass
 
-    async def on_TestMessage1(self, conn: ProtoConnection, message: TestMessage1):
+    async def on_test_message1(self, conn: ProtoConnection, message: TestMessage1):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
         await conn.send_protobuf(TestMessage1Result(text=message.DESCRIPTOR.name+'Response'))
 
-    async def on_TestMessage1Result(self, conn: ProtoConnection, message: TestMessage1Result):
+    async def on_test_message1_result(self, conn: ProtoConnection, message: TestMessage1Result):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
         await conn.send_protobuf(TestMessage2(text=message.DESCRIPTOR.name+'Request'))
 
-    async def on_TestMessage2(self, conn: ProtoConnection, message: TestMessage2):
+    async def on_test_message2(self, conn: ProtoConnection, message: TestMessage2):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
         await conn.send_protobuf(TestMessage2Result(text=message.DESCRIPTOR.name+'Response'))
 
-    async def on_TestMessage2Result(self, conn: ProtoConnection, message: TestMessage2Result):
+    async def on_test_message2_result(self, conn: ProtoConnection, message: TestMessage2Result):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
         self.event.set()
 
