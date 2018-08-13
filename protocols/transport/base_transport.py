@@ -12,6 +12,18 @@ class ProtoTransportError(RuntimeError):
 
 
 class SerrializeProtocol(object):
+    def __init__(self, protobuf_types, logger):
+        self._logger = logger
+        self._protobuf_types = protobuf_types
+
+    @property
+    def protobuf_types(self):
+        return self._protobuf_types
+
+    @protobuf_types.setter
+    def protobuf_types(self, value):
+        self._protobuf_types = value
+
     async def send_protobuf(self, writer, message):
         raise Exception('Not implementation "send_protobuf"')
 
@@ -19,9 +31,14 @@ class SerrializeProtocol(object):
         raise Exception('Not implementation "recv_protobuf"')
 
 
+class ProtoConnectionHandler(object):
+    async def on_connect(self, conn: 'ProtoConnection'):
+        pass
+
+
 class ProtoConnection(object):
     def __init__(self, reader: asyncio.streams.StreamReader, writer: asyncio.streams.StreamWriter,
-                 handler, protocol: SerrializeProtocol, logger, is_server: bool):
+                 handler: ProtoConnectionHandler, protocol: SerrializeProtocol, logger, is_server: bool):
         self._logger = logger
         self._reader = reader
         self._writer = writer
@@ -35,7 +52,7 @@ class ProtoConnection(object):
         if self._writer is None:
             raise ProtoTransportError('Connection is not init')
 
-        await self._protocol.send_protobuf(self._writer, message)
+        return await self._protocol.send_protobuf(self._writer, message)
 
     async def recv_protobuf(self):
         if self._reader is None:
@@ -43,7 +60,24 @@ class ProtoConnection(object):
 
         return await self._protocol.recv_protobuf(self._reader)
 
+    async def send(self, data):
+        self._writer.write(data)
+        return await self._writer.drain()
+
+    @property
+    def reader(self):
+        return self._reader
+
+    @property
+    def logger(self):
+        return self._logger
+
+    @property
+    def protocol(self):
+        return self._protocol
+
     async def run_recv_loop(self):
+        await self._handler.on_connect(self)
         self._recv_loop_task = asyncio.ensure_future(self._recv_loop())
         return self._recv_loop_task
 
@@ -51,12 +85,12 @@ class ProtoConnection(object):
         try:
             self._logger.info('recv loop started')
             while True:
-                response = await self.recv_protobuf()
+                message = await self.recv_protobuf()
 
-                handler_name = LOWER_CASE_FIRST_RE.sub(r'\1_\2', response.DESCRIPTOR.name)
+                handler_name = LOWER_CASE_FIRST_RE.sub(r'\1_\2', message.DESCRIPTOR.name)
                 handler_name = 'on_' + LOWER_CASE_SECOND_RE.sub(r'\1_\2', handler_name).lower()
                 handler = getattr(self._handler, handler_name)
-                await handler(self, response)
+                await handler(self, message)
         except asyncio.CancelledError:
             self._logger.debug('The receiving cycle is stopped by cancel')
         except asyncio.IncompleteReadError:
@@ -90,7 +124,7 @@ class ProtoConnection(object):
 
 
 async def create_client(host: str, port: int, handler_factory, protocol: SerrializeProtocol, logger,
-                        max_attempt: int=5) -> ProtoConnection:
+                        connection_class=ProtoConnection, max_attempt: int=5):
     logger.info('Start connecting to %s:%d', host, port)
 
     ssl = (port == 443)
@@ -102,7 +136,7 @@ async def create_client(host: str, port: int, handler_factory, protocol: Serrial
                 logger.info('Connection attempt %d', attempt + 1)
 
             reader, writer = await asyncio.open_connection(host, port, ssl=ssl)
-            connection = ProtoConnection(reader, writer, handler, protocol, logger, False)
+            connection = connection_class(reader, writer, handler, protocol, logger, False)
             logger.info('Connected to %s:%s', host, port)
             break
         except ConnectionRefusedError as ex:
@@ -113,7 +147,6 @@ async def create_client(host: str, port: int, handler_factory, protocol: Serrial
                 logger.error('Error connecting to %s:%d, message: %s', host, port, ex)
                 await asyncio.sleep(0.5)
 
-    await handler.on_connect()
     await connection.run_recv_loop()
 
     return connection

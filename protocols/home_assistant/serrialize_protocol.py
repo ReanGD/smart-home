@@ -5,7 +5,7 @@ from protocols.transport import ProtoTransportError, SerrializeProtocol
 
 class HASerrializeProtocol(SerrializeProtocol):
     def __init__(self, protobuf_types, logger):
-        self._logger = logger
+        super().__init__(protobuf_types, logger)
         self._type_size = md5().digest_size
         self._types_map = {HASerrializeProtocol._hash(it.__name__) : it for it in protobuf_types}
 
