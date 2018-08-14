@@ -16,7 +16,7 @@ class HomeAssistentHandler(object):
     def __init__(self, event):
         self._event = event
 
-    async def on_connect(self):
+    async def on_connect(self, conn: ProtoConnection):
         pass
 
     async def on_start_recognition(self, conn: ProtoConnection, message: StartRecognition):

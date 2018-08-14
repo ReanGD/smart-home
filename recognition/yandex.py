@@ -1,24 +1,35 @@
-from audio import paInt16, Stream
+from logging import getLogger
+from audio import paInt16, Stream, AudioData, StreamSettings
 from .audio_settings import AudioSettings
-from .yandex_api import Api, YandexApiError
+from protocols.transport import create_client, ProtoTransportError
+from protocols.yandex import *
 from .base import PhraseRecognizer, PhraseRecognizerConfig
+
+
+class Handler(YandexProtoConnectionHandler):
+    def set_callback(self, callback):
+        self._callback = callback
+
+    async def on_add_data_response(self, conn, message: AddDataResponse):
+        await self._callback(message)
 
 
 class Yandex(PhraseRecognizer):
     def __init__(self, config):
         audio_settings = AudioSettings(channels=1, sample_format=paInt16, sample_rate=16000)
         super().__init__(config, audio_settings)
-        self._api = Api()
+        self._connection = None
         self._recv_callback = None
         self._last_text = ''
         self._is_continue = False
+        self._yandex_settings = StreamSettings(channels=1, sample_format=paInt16, sample_rate=16000)
 
-    async def _on_recv(self, response):
+    async def _on_recv(self, response: AddDataResponse):
         is_phrase_finished = response.endOfUtt
         recognition = response.recognition
         if not is_phrase_finished:
             if len(recognition) != 1:
-                raise YandexApiError('len(recognition) != 1')
+                raise ProtoTransportError('len(recognition) != 1')
 
         phrases = [' '.join([word.value for word in phrase.words]) for phrase in recognition]
 
@@ -36,14 +47,22 @@ class Yandex(PhraseRecognizer):
         self._is_continue = True
         self._recv_callback = recv_callback
         c = self.get_config()
-        await self._api.connect(c.app, c.host, c.port, c.user_uuid, c.api_key, c.topic, c.lang,
-                                c.disable_antimat)
 
-        await self._api.recv_loop_run(self._on_recv)
+        logger = getLogger('yandex_api')
+        protocol = YandexSerrializeProtocol([AddDataResponse], logger)
+
+        def handler_factory():
+            handler = Handler(c.app, c.host, c.port, c.user_uuid, c.api_key, c.topic, c.lang, c.disable_antimat)
+            handler.set_callback(self._on_recv)
+            return handler
+
+        self._connection = await create_client(c.host, c.port, handler_factory, protocol, logger, YandexProtoConnection)
+
         while self._is_continue:
-            await self._api.send_audio_data(await stream.read_full(50))
+            data = AudioData(await stream.read_full(50), stream.get_settings()).get_raw_data(self._yandex_settings)
+            await self._connection.send_audio_data(data)
 
-        self._api.close()
+        await self._connection.close()
         self._last_text = ''
 
 

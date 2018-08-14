@@ -12,7 +12,7 @@ class HomeAssistentHandler(object):
     def __init__(self, hass):
         self._hass = hass
 
-    async def on_connect(self):
+    async def on_connect(self, conn: ProtoConnection):
         pass
 
     async def on_set_device_state(self, conn: ProtoConnection, message: SetDeviceState):

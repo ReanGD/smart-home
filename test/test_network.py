@@ -17,7 +17,7 @@ class HandlerMain(object):
         self.event = event
         self.recv_messages = []
 
-    async def on_connect(self):
+    async def on_connect(self, conn: ProtoConnection):
         pass
 
     async def on_test_message1(self, conn: ProtoConnection, message: TestMessage1):
