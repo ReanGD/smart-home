@@ -9,10 +9,6 @@ def init_logger():
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
     handler.setFormatter(formatter)
 
-    logger = logging.getLogger('yanader_transport')
-    logger.setLevel(logging.INFO)
-    logger.addHandler(handler)
-
     logger = logging.getLogger('yandex_api')
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
@@ -25,11 +21,13 @@ def init_logger():
 async def run():
     print("start")
 
+    device_index = 0
     # await device_info.run()
-    # await record.run(8)
-    await demo.run(8)
+    # await record.run(device_index)
+    # await demo.run(device_index)
+    await yandex_recognition.run(device_index)
 
-    # voice_recognition.run(8)
+    # voice_recognition.run(device_index)
     # vad.run()
     # wrap_speech_recognition.run()
     # skills.run()
