@@ -1,23 +1,28 @@
-Create virtual env for arch
----------------------------
+Create virtual env (for arch)
+-----------------------------
 
 ```bash
-pacaur -S swig
+sudo pacman -S swig portaudio protobuf
 cd ~/projects/venv
 virtualenv smart-home
 source smart-home/bin/activate
-pip3 install pyaudio pocketsphinx webrtcvad soco respeaker protobuf numpy pymorphy2 pymorphy2-dicts-ru
+cd ~/projects/home/smart-home/
+pip3 install -r requirements.txt
+./generate_proto.sh
+deactivate
+```
 
+snowboy (for arch)
+------------------
+
+```bash
+source smart-home/bin/activate
 git clone https://github.com/Kitt-AI/snowboy.git ~/tmp/snowboy
 cd ~/tmp/snowboy
 sed -i -e "s|-lf77blas -lcblas -llapack -latlas|-lcblas|g" -e 's/ -shared/ -Wl,-O1,--as-needed\0/g' "swig/Python3/Makefile"
 python setup.py build
 python setup.py install
 rm -rf ~/tmp/snowboy
-
-./generate_proto.sh
-
-deactivate
 ```
 
 pyusb

@@ -1,0 +1,8 @@
+pocketsphinx==0.1.15
+webrtcvad==2.0.10
+soco==0.15
+respeaker==0.6.1
+protobuf==3.6.0
+numpy==1.14.5
+pymorphy2==0.8
+pymorphy2-dicts-ru==2.4.404381.4453942
