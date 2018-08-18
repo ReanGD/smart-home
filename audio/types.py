@@ -5,32 +5,25 @@ paContinue = pa.paContinue
 paComplete = pa.paComplete
 paAbort = pa.paAbort
 
-paFloat32 = pa.paFloat32
 paInt32 = pa.paInt32
 paInt24 = pa.paInt24
 paInt16 = pa.paInt16
-paInt8 = pa.paInt8
 paUInt8 = pa.paUInt8
 
-paFormats = {paFloat32: "paFloat32",
-             paInt32: "paInt32",
+paFormats = {paInt32: "paInt32",
              paInt24: "paInt24",
              paInt16: "paInt16",
-             paInt8: "paInt8",
              paUInt8: "paUInt8"}
 
 
-def get_format_from_width(width, unsigned=True):
+def get_format_from_width(width):
     if width == 1:
-        if unsigned:
-            return paUInt8
-        else:
-            return paInt8
+        return paUInt8
     elif width == 2:
         return paInt16
     elif width == 3:
         return paInt24
     elif width == 4:
-        return paFloat32
+        return paInt32
     else:
         raise ValueError("Invalid width: %d" % width)

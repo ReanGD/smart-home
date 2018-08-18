@@ -13,39 +13,39 @@ class DeviceInfo(object):
 
 
 class AudioSettings(object):
-    def __init__(self, channels: int, sample_format: int, sample_rate: int):
-        if channels is not None:
-            assert isinstance(channels, int) and channels >= 1, "A channel must be a positive integer greater than 1"
+    def __init__(self, channels: int=1,
+                 sample_format: int=paInt16,
+                 sample_rate: int=0):
+        msg = 'Param "channels" ({}) must be a positive integer greater than 1'.format(channels)
+        assert channels is not None and isinstance(channels, int) and 0 < channels, msg
 
-        if sample_format is not None:
-            assert sample_format in paFormats, "Invalid value for sample format"
+        if sample_format not in paFormats:
+            formats = ', '.join([str(it) for it in paFormats.keys()])
+            msg = 'Param "sample_format" ({}) must be one of: [{}]'.format(sample_format, formats)
+            assert sample_format in paFormats, msg
 
-        if sample_rate is not None:
-            msg = "Sample rate (value = {}) must be None or a positive integer".format(sample_rate)
-            assert isinstance(sample_rate, (float, int)) and sample_rate > 0, msg
+        msg = 'Param "sample_rate" ({}) must be a positive integer'.format(sample_rate)
+        assert sample_rate is not None and isinstance(sample_rate, (float, int)) and sample_rate > 0, msg
 
-        if sample_rate is not None:
-            sample_width = pa.get_sample_size(sample_format)
-            msg = "Sample width must be integer between 1 and 4 inclusive"
-            assert isinstance(sample_width, int) and 1 <= sample_width <= 4, msg
-        else:
-            sample_width = None
+        sample_width = pa.get_sample_size(sample_format)
+        msg = 'Value "sample_width" ({}) must be integer between 1 and 4 inclusive'.format(sample_width)
+        assert isinstance(sample_width, int) and 1 <= sample_width <= 4, msg
 
         self._channels = channels
         self._sample_format = sample_format
-        self._sample_rate = sample_rate
+        self._sample_rate = int(sample_rate)
         self._sample_width = sample_width
 
     def clone(self) -> 'AudioSettings':
         return AudioSettings(self.channels, self.sample_format, self.sample_rate)
 
     @property
-    def channels(self) -> [int, None]:
+    def channels(self) -> int:
         return self._channels
 
     @property
     def sample_format(self) -> int:
-        # sample farmat: paFloat32, paInt32, paInt24, paInt16, paInt8, paUInt8
+        # sample farmat: paInt32, paInt24, paInt16, paUInt8
         return self._sample_format
 
     @property
@@ -55,25 +55,19 @@ class AudioSettings(object):
 
     @property
     def sample_width(self) -> int:
-        # size of each sample
+        # size of each sample in bytes
         return self._sample_width
 
     def get_duration_ms_by_frames_count(self, count) -> int:
-        assert self._sample_rate is not None, "Sample rate is not initialized"
         return int(count * 1000.0 / self._sample_rate)
 
     def get_frames_count_by_duration_ms(self, ms) -> int:
-        assert self._sample_rate is not None, "Sample rate is not initialized"
         return int(ms * self._sample_rate / 1000.0)
 
     def __str__(self) -> str:
-        channels = 'None' if self._channels is None else self._channels
-        sample_format = 'None' if self._sample_format is None else paFormats.get(self._sample_format, 'paUnknown')
-        sample_rate = 'None' if self._sample_rate is None else self._sample_rate
-        sample_width = 'None' if self._sample_width is None else self._sample_width
-
         msg = 'channels={}, sample_format={}, sample_rate={}, sample_width={}'
-        return msg.format(channels, sample_format, sample_rate, sample_width)
+        return msg.format(self._channels, paFormats.get(self._sample_format, 'paUnknown'),
+                          self._sample_rate, self._sample_width)
 
 
 class StreamSettings(AudioSettings):
@@ -92,10 +86,8 @@ class StreamSettings(AudioSettings):
 
         super().__init__(channels, sample_format, int(sample_rate))
 
-        msg = "Channels should be between 1 and {} inclusive".format(device_info.maxInputChannels)
-        assert channels is not None and 0 < channels <= device_info.maxInputChannels, msg
-
-        assert sample_format is not None, "The rate must not be null"
+        msg = 'Param "channel" must be less than {}'.format(device_info.maxInputChannels + 1)
+        assert channels <= device_info.maxInputChannels, msg
 
     def clone(self) -> 'StreamSettings':
         return StreamSettings(self.device_index, self.channels, self.sample_format, self.sample_rate)

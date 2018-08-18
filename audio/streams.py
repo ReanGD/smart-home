@@ -1,18 +1,17 @@
+import wave
+from io import BytesIO
 import _portaudio as pa
 from threading import Lock
 from collections import deque
 from asyncio import Future, get_event_loop
-from .types import paContinue
-from .audio_data import AudioData
-from .settings import StreamSettings
+from .types import paContinue, paInt16, get_format_from_width
+from .helper import audio_data_converter
+from .settings import AudioSettings
 
 
 class Stream(object):
-    def __init__(self, settings: StreamSettings):
-        if settings is None:
-            self._settings = StreamSettings()
-        else:
-            self._settings = settings
+    def __init__(self, settings: AudioSettings):
+        self._settings = settings
         self._frames_ratio = float(self._settings.sample_rate) / 1000.0
 
     def __enter__(self):
@@ -21,7 +20,7 @@ class Stream(object):
     def __exit__(self, value_type, value, traceback):
         self.close()
 
-    def get_settings(self) -> StreamSettings:
+    def get_settings(self) -> AudioSettings:
         return self._settings
 
     def get_frames_count_by_duration_ms(self, ms):
@@ -43,9 +42,89 @@ class Stream(object):
         raise Exception('Not implementation "close"')
 
 
+class SettingsConverter(Stream):
+    def __init__(self, in_stream: Stream, out_settings: AudioSettings):
+        super().__init__(out_settings)
+        self._in_stream = in_stream
+
+    def start_stream(self):
+        self._in_stream.start_stream()
+
+    async def read(self, ms):
+        data = self._in_stream.read(ms)
+        return audio_data_converter(data, self._in_stream.get_settings(), self.get_settings())
+
+    async def read_full(self, min_ms):
+        data = self._in_stream.read_full(min_ms)
+        return audio_data_converter(data, self._in_stream.get_settings(), self.get_settings())
+
+    def crop_to(self, ms):
+        self._in_stream.crop_to(ms)
+
+    def close(self):
+        self._in_stream.close()
+
+
+class Storage(Stream):
+    def __init__(self, in_stream: Stream):
+        super().__init__(in_stream.get_settings())
+        self._raw_data = ''
+        self._in_stream = in_stream
+
+    def start_stream(self):
+        self._in_stream.start_stream()
+
+    async def read(self, ms):
+        data = self._in_stream.read(ms)
+        self._raw_data += data
+        return data
+
+    async def read_full(self, min_ms):
+        data = self._in_stream.read_full(min_ms)
+        self._raw_data += data
+        return data
+
+    def crop_to(self, ms):
+        self._in_stream.crop_to(ms)
+
+    def close(self):
+        self._in_stream.close()
+
+    def save_as_wav(self, file):
+        wav_writer = wave.open(file, "wb")
+        try:
+            s = self.get_settings()
+            wav_writer.setnchannels(s.channels)
+            wav_writer.setsampwidth(s.sample_width)
+            wav_writer.setframerate(s.sample_rate)
+            wav_writer.writeframes(self._raw_data)
+        finally:
+            wav_writer.close()
+
+    def get_raw_data(self):
+        return self._raw_data
+
+    def get_wav_data(self):
+        file = BytesIO()
+        self.save_as_wav(file)
+        return file.getvalue()
+
+
 class Microphone(Stream):
-    def __init__(self, settings: StreamSettings = None):
-        super().__init__(settings)
+    def __init__(self,
+                 device_index: int=None,
+                 channels: int=1,
+                 sample_format=paInt16,
+                 sample_rate: int=None):
+
+        device_index = Microphone.get_device_index(device_index)
+        device_info = pa.get_device_info(device_index)
+
+        if sample_rate is None:
+            sample_rate = device_info.defaultSampleRate
+
+        super().__init__(AudioSettings(channels, sample_format, sample_rate))
+
         self._loop = get_event_loop()
         self._lock = Lock()
         self._waiter = None
@@ -55,19 +134,34 @@ class Microphone(Stream):
         self._audio_buffer = deque(maxlen=500)
 
         s = self.get_settings()
+        msg = 'Param "channel" must be less than {}'.format(device_info.maxInputChannels + 1)
+        assert s.channels <= device_info.maxInputChannels, msg
+
         arguments = {
             'rate': s.sample_rate,
             'channels': s.channels,
             'format': s.sample_format,
             'input': True,
             'output': False,
-            'input_device_index': s.device_index,
+            'input_device_index': device_index,
             'output_device_index': None,
             'frames_per_buffer': s.get_frames_count_by_duration_ms(10),
             'stream_callback': self._audio_callback}
 
         self._stream = pa.open(**arguments)
         self._is_started = False
+
+    @staticmethod
+    def _get_device_index(device_index: int) -> int:
+        if device_index is not None:
+            assert isinstance(device_index, int), "Device index must be None or an integer"
+            count = pa.get_device_count()
+            msg = ("Device index out of range ({} devices available; "
+                   "device index should be between 0 and {} inclusive)")
+            assert 0 <= device_index < count, msg.format(count, count - 1)
+            return device_index
+        else:
+            return pa.get_default_input_device()
 
     def start_stream(self):
         if not self._is_started:
@@ -141,9 +235,9 @@ class Microphone(Stream):
 
 
 class DataStream(Stream):
-    def __init__(self, data: AudioData):
-        super().__init__(data.get_settings())
-        self._stream = data.get_raw_data()
+    def __init__(self, raw_data, settings: AudioSettings):
+        super().__init__(settings)
+        self._raw_data = raw_data
         self._offset = 0
 
     def start_stream(self):
@@ -152,21 +246,30 @@ class DataStream(Stream):
     async def read(self, ms):
         start = self._offset
         self._offset += (self.get_frames_count_by_duration_ms(ms) * self._settings.sample_width)
-        return self._stream[start:self._offset]
+        return self._raw_data[start:self._offset]
 
     async def read_full(self, min_ms):
         start = self._offset
-        self._offset = len(self._stream)
-        return self._stream[self._offset:]
+        self._offset = len(self._raw_data)
+        return self._raw_data[self._offset:]
 
     def crop_to(self, ms):
         pass
 
     def close(self):
-        self._stream = b''
+        self._raw_data = b''
         self._offset = 0
 
 
 class WavStream(DataStream):
-    def __init__(self, file, out_settings: StreamSettings):
-        super().__init__(AudioData.load_as_wav(file, out_settings))
+    def __init__(self, file_path):
+        wav_reader = wave.open(file_path, "rb")
+        try:
+            sample_format = get_format_from_width(wav_reader.getsampwidth())
+            settings = AudioSettings(channels=wav_reader.getnchannels(),
+                                     sample_rate=wav_reader.getframerate(),
+                                     sample_format=sample_format)
+            raw_data = wav_reader.readframes(wav_reader.getnframes())
+            super().__init__(raw_data, settings)
+        finally:
+            wav_reader.close()
