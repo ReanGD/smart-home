@@ -2,7 +2,7 @@ import wave
 import audioop
 from io import BytesIO
 from .types import get_format_from_width
-from .stream_settings import StreamSettings
+from .settings import StreamSettings
 
 
 class AudioData(object):

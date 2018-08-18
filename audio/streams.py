@@ -4,7 +4,7 @@ from collections import deque
 from asyncio import Future, get_event_loop
 from .types import paContinue
 from .audio_data import AudioData
-from .stream_settings import StreamSettings
+from .settings import StreamSettings
 
 
 class Stream(object):

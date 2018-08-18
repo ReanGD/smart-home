@@ -10,13 +10,15 @@ pa.initialize()
 atexit.register(lambda: pa.terminate())
 
 from .audio_data import AudioData
-from .stream_settings import StreamSettings
+from .settings import DeviceInfo, AudioSettings, StreamSettings
 from .streams import Stream, Microphone, DataStream, WavStream
 from .types import *
 
 
 __all__ = [
     'AudioData',
+    'DeviceInfo',
+    'AudioSettings',
     'StreamSettings',
     'Stream',
     'Microphone',
