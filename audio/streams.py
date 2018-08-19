@@ -13,7 +13,6 @@ from .devices import Devices
 class Stream(object):
     def __init__(self, settings: AudioSettings):
         self._settings = settings
-        self._frames_ratio = float(self._settings.sample_rate) / 1000.0
 
     def __enter__(self):
         return self
@@ -23,9 +22,6 @@ class Stream(object):
 
     def get_settings(self) -> AudioSettings:
         return self._settings
-
-    def get_frames_count_by_duration_ms(self, ms):
-        return int(ms * self._frames_ratio)
 
     def start_stream(self):
         raise Exception('Not implementation "start_stream"')
@@ -233,7 +229,7 @@ class DataStream(Stream):
 
     async def read(self, ms):
         start = self._offset
-        self._offset += (self.get_frames_count_by_duration_ms(ms) * self._settings.sample_width)
+        self._offset += (self.get_settings().get_frames_count_by_duration_ms(ms) * self._settings.sample_width)
         return self._raw_data[start:self._offset]
 
     async def read_full(self, min_ms):
