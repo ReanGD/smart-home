@@ -1,5 +1,4 @@
-from audio import Stream
-from .audio_settings import AudioSettings
+from audio import Stream, AudioSettings
 
 
 class PhraseRecognizer(object):

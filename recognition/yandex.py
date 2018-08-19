@@ -1,6 +1,5 @@
 from logging import getLogger
-from audio import paInt16, Stream, AudioData, StreamSettings
-from .audio_settings import AudioSettings
+from audio import paInt16, Stream, AudioSettings, SettingsConverter
 from protocols.transport import create_client, ProtoTransportError
 from protocols.yandex import *
 from .base import PhraseRecognizer, PhraseRecognizerConfig
@@ -16,18 +15,22 @@ class Handler(YandexProtoConnectionHandler):
 
 class Yandex(PhraseRecognizer):
     def __init__(self, config):
-        audio_settings = AudioSettings(channels=1, sample_format=paInt16, sample_rate=16000)
-        super().__init__(config, audio_settings)
+        super().__init__(config, AudioSettings(channels=1, sample_format=paInt16, sample_rate=16000))
         self._connection = None
         self._recv_callback = None
         self._last_text = ''
         self._is_continue = False
-        self._yandex_settings = StreamSettings(channels=1, sample_format=paInt16, sample_rate=16000)
 
     async def _on_recv(self, response: AddDataResponse):
+        if response.responseCode != 200:
+            raise ProtoTransportError('Wrong responce code ({}) for AddData'.format(response.responseCode))
+
         is_phrase_finished = response.endOfUtt
         recognition = response.recognition
         if not is_phrase_finished:
+            if len(recognition) == 0:
+                self._is_continue = True
+                return self._is_continue
             if len(recognition) != 1:
                 raise ProtoTransportError('len(recognition) != 1')
 
@@ -42,6 +45,7 @@ class Yandex(PhraseRecognizer):
         return self._is_continue
 
     async def recognize(self, stream: Stream, recv_callback):
+        stream = SettingsConverter(stream, self.get_audio_settings())
         stream.start_stream()
         stream.crop_to(100)
         self._is_continue = True
@@ -59,8 +63,7 @@ class Yandex(PhraseRecognizer):
         self._connection = await create_client(c.host, c.port, handler_factory, protocol, logger, YandexProtoConnection)
 
         while self._is_continue:
-            data = AudioData(await stream.read_full(50), stream.get_settings()).get_raw_data(self._yandex_settings)
-            await self._connection.send_audio_data(data)
+            await self._connection.send_audio_data(await stream.read_full(50))
 
         await self._connection.close()
         self._last_text = ''

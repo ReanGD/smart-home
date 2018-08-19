@@ -7,6 +7,7 @@ from asyncio import Future, get_event_loop
 from .types import paContinue, paInt16, get_format_from_width
 from .helper import audio_data_converter
 from .settings import AudioSettings
+from .devices import Devices
 
 
 class Stream(object):
@@ -51,11 +52,11 @@ class SettingsConverter(Stream):
         self._in_stream.start_stream()
 
     async def read(self, ms):
-        data = self._in_stream.read(ms)
+        data = await self._in_stream.read(ms)
         return audio_data_converter(data, self._in_stream.get_settings(), self.get_settings())
 
     async def read_full(self, min_ms):
-        data = self._in_stream.read_full(min_ms)
+        data = await self._in_stream.read_full(min_ms)
         return audio_data_converter(data, self._in_stream.get_settings(), self.get_settings())
 
     def crop_to(self, ms):
@@ -68,19 +69,19 @@ class SettingsConverter(Stream):
 class Storage(Stream):
     def __init__(self, in_stream: Stream):
         super().__init__(in_stream.get_settings())
-        self._raw_data = ''
+        self._raw_data = b''
         self._in_stream = in_stream
 
     def start_stream(self):
         self._in_stream.start_stream()
 
     async def read(self, ms):
-        data = self._in_stream.read(ms)
+        data = await self._in_stream.read(ms)
         self._raw_data += data
         return data
 
     async def read_full(self, min_ms):
-        data = self._in_stream.read_full(min_ms)
+        data = await self._in_stream.read_full(min_ms)
         self._raw_data += data
         return data
 
@@ -117,11 +118,9 @@ class Microphone(Stream):
                  sample_format=paInt16,
                  sample_rate: int=None):
 
-        device_index = Microphone.get_device_index(device_index)
-        device_info = pa.get_device_info(device_index)
-
+        device_info = Devices.get_device_info_by_index(device_index)
         if sample_rate is None:
-            sample_rate = device_info.defaultSampleRate
+            sample_rate = device_info.default_sample_rate
 
         super().__init__(AudioSettings(channels, sample_format, sample_rate))
 
@@ -134,8 +133,8 @@ class Microphone(Stream):
         self._audio_buffer = deque(maxlen=500)
 
         s = self.get_settings()
-        msg = 'Param "channel" must be less than {}'.format(device_info.maxInputChannels + 1)
-        assert s.channels <= device_info.maxInputChannels, msg
+        msg = 'Param "channel" must be less than {}'.format(device_info.max_input_channels + 1)
+        assert s.channels <= device_info.max_input_channels, msg
 
         arguments = {
             'rate': s.sample_rate,
@@ -143,25 +142,13 @@ class Microphone(Stream):
             'format': s.sample_format,
             'input': True,
             'output': False,
-            'input_device_index': device_index,
+            'input_device_index': device_info.index,
             'output_device_index': None,
             'frames_per_buffer': s.get_frames_count_by_duration_ms(10),
             'stream_callback': self._audio_callback}
 
         self._stream = pa.open(**arguments)
         self._is_started = False
-
-    @staticmethod
-    def _get_device_index(device_index: int) -> int:
-        if device_index is not None:
-            assert isinstance(device_index, int), "Device index must be None or an integer"
-            count = pa.get_device_count()
-            msg = ("Device index out of range ({} devices available; "
-                   "device index should be between 0 and {} inclusive)")
-            assert 0 <= device_index < count, msg.format(count, count - 1)
-            return device_index
-        else:
-            return pa.get_default_input_device()
 
     def start_stream(self):
         if not self._is_started:
@@ -226,12 +213,13 @@ class Microphone(Stream):
                 self._audio_buffer.popleft()
 
     def close(self):
-        try:
-            if not pa.is_stream_stopped(self._stream):
-                pa.stop_stream(self._stream)
-        finally:
-            pa.close(self._stream)
-            self._stream = None
+        if self._stream is not None:
+            try:
+                if not pa.is_stream_stopped(self._stream):
+                    pa.stop_stream(self._stream)
+            finally:
+                pa.close(self._stream)
+                self._stream = None
 
 
 class DataStream(Stream):

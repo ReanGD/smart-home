@@ -3,23 +3,12 @@ from .settings import AudioSettings
 
 
 def audio_data_converter(raw_data, in_settings: AudioSettings, out_settings: AudioSettings):
-    def fill(param1, param2, name):
-        if param1 is None:
-            param1 = param2
-        elif param2 is None:
-            param2 = param1
+    in_sample_rate = in_settings.sample_rate
+    out_sample_rate = out_settings.sample_rate
+    in_sample_width = in_settings.sample_width
+    out_sample_width = out_settings.sample_width
 
-        if param1 is None:
-            msg = 'It is not possible to convert audio data. Parameter "{}" is not specified'
-            raise RuntimeError(msg.format(name))
-        else:
-            return param1, param2
-
-    in_sample_rate, out_sample_rate = fill(in_settings.sample_rate, out_settings.sample_rate, 'Sample rate')
-    in_sample_width, out_sample_width = fill(in_settings.sample_width, out_settings.sample_width, 'Sample format')
-    in_channels, out_channels = fill(in_settings.channels, out_settings.channels, 'Channels')
-
-    if in_channels != out_channels:
+    if in_settings.channels != out_settings.channels:
         raise RuntimeError('Can not convert audio data. The number of channels must be the same.')
 
     if in_sample_rate == out_sample_rate and in_sample_width == out_sample_width:
@@ -32,7 +21,7 @@ def audio_data_converter(raw_data, in_settings: AudioSettings, out_settings: Aud
         raw_data = audioop.bias(raw_data, 1, -128)
 
     if in_sample_rate != out_sample_rate:
-        raw_data, _ = audioop.ratecv(raw_data, in_sample_width, in_channels, in_sample_rate, out_sample_rate, None)
+        raw_data, _ = audioop.ratecv(raw_data, in_sample_width, in_settings.channels, in_sample_rate, out_sample_rate, None)
 
     if in_sample_width != out_sample_width:
         # we're converting the audio into 24-bit
