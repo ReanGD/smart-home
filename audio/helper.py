@@ -2,7 +2,8 @@ import audioop
 from .settings import AudioSettings
 
 
-def audio_data_converter(raw_data, in_settings: AudioSettings, out_settings: AudioSettings):
+def audio_data_converter(raw_data: bytes, in_settings: AudioSettings,
+                         out_settings: AudioSettings) -> bytes:
     in_sample_rate = in_settings.sample_rate
     out_sample_rate = out_settings.sample_rate
     in_sample_width = in_settings.sample_width
@@ -21,7 +22,8 @@ def audio_data_converter(raw_data, in_settings: AudioSettings, out_settings: Aud
         raw_data = audioop.bias(raw_data, 1, -128)
 
     if in_sample_rate != out_sample_rate:
-        raw_data, _ = audioop.ratecv(raw_data, in_sample_width, in_settings.channels, in_sample_rate, out_sample_rate, None)
+        raw_data, _ = audioop.ratecv(raw_data, in_sample_width, in_settings.channels,
+                                     in_sample_rate, out_sample_rate, None)
 
     if in_sample_width != out_sample_width:
         # we're converting the audio into 24-bit

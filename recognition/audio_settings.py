@@ -1,10 +1,10 @@
 from typing import List
-from audio import StreamSettings, paInt16
+from audio import StreamSettings, PA_INT16
 
 
 class AudioSettings(object):
     def __init__(self, channels: int=1,
-                 sample_format=paInt16,
+                 sample_format=PA_INT16,
                  sample_rate: int=16000,
                  frames: int=1024):
         self.channels = channels

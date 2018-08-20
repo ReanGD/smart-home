@@ -1,5 +1,5 @@
 from logging import getLogger
-from audio import paInt16, Stream, AudioSettings, SettingsConverter
+from audio import PA_INT16, Stream, AudioSettings, SettingsConverter
 from protocols.transport import create_client, ProtoTransportError
 from protocols.yandex import *
 from .base import PhraseRecognizer, PhraseRecognizerConfig
@@ -15,7 +15,7 @@ class Handler(YandexProtoConnectionHandler):
 
 class Yandex(PhraseRecognizer):
     def __init__(self, config):
-        super().__init__(config, AudioSettings(channels=1, sample_format=paInt16, sample_rate=16000))
+        super().__init__(config, AudioSettings(channels=1, sample_format=PA_INT16, sample_rate=16000))
         self._connection = None
         self._recv_callback = None
         self._last_text = ''
