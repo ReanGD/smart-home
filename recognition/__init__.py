@@ -1,5 +1,4 @@
 from .yandex import Yandex, YandexConfig
-# from .http_activation import HttpActivation, HttpActivationConfig
 # from .listener import Listener
 # from .raw import Raw, RawConfig
 # from .audio_settings import get_common_settings
@@ -20,8 +19,6 @@ __all__ = [
     # 'PocketsphinxConfig',
     # 'Snowboy',
     # 'SnowboyConfig',
-    # 'HttpActivation',
-    # 'HttpActivationConfig',
     # 'Listener',
     # 'get_common_settings'
 ]
