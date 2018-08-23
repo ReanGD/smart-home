@@ -1,6 +1,6 @@
 from hashlib import md5
 from struct import pack, unpack
-from protocols.transport import ProtoTransportError, SerrializeProtocol
+from protocols.transport import TransportError, SerrializeProtocol
 
 
 class HASerrializeProtocol(SerrializeProtocol):
@@ -32,7 +32,7 @@ class HASerrializeProtocol(SerrializeProtocol):
         if proto_type is None:
             self._logger.debug('Recv unknown protobuf message (%d bytes)',
                                package_size - self._type_size)
-            raise ProtoTransportError('Recv unknown protobuf message')
+            raise TransportError('Recv unknown protobuf message')
 
         message = proto_type()
         message.ParseFromString(package_bin[self._type_size:])

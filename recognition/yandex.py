@@ -1,6 +1,6 @@
 from logging import getLogger
 from audio import PA_INT16, Stream, AudioSettings, SettingsConverter
-from protocols.transport import create_client, ProtoTransportError
+from protocols.transport import create_client, TransportError
 from protocols.yandex import *
 from .base import PhraseRecognizer, PhraseRecognizerConfig
 
@@ -23,7 +23,7 @@ class Yandex(PhraseRecognizer):
 
     async def _on_recv(self, response: AddDataResponse):
         if response.responseCode != 200:
-            raise ProtoTransportError('Wrong responce code ({}) for AddData'.format(response.responseCode))
+            raise TransportError('Wrong responce code ({}) for AddData'.format(response.responseCode))
 
         is_phrase_finished = response.endOfUtt
         recognition = response.recognition
@@ -32,7 +32,7 @@ class Yandex(PhraseRecognizer):
                 self._is_continue = True
                 return self._is_continue
             if len(recognition) != 1:
-                raise ProtoTransportError('len(recognition) != 1')
+                raise TransportError('len(recognition) != 1')
 
         phrases = [' '.join([word.value for word in phrase.words]) for phrase in recognition]
 

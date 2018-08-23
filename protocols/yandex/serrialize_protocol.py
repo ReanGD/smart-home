@@ -1,7 +1,7 @@
 import asyncio
 from .basic_pb2 import ConnectionResponse
 from .voiceproxy_pb2 import AdvancedASROptions, ConnectionRequest, AddData
-from protocols.transport import ProtoTransportError, SerrializeProtocol, ProtoConnectionHandler, ProtoConnection
+from protocols.transport import TransportError, SerrializeProtocol, ProtoConnectionHandler, ProtoConnection
 
 
 class YandexSerrializeProtocol(SerrializeProtocol):
@@ -34,7 +34,7 @@ class YandexSerrializeProtocol(SerrializeProtocol):
                 pass
 
         self._logger.debug('Recv unknown protobuf message (%d bytes)', package_size)
-        raise ProtoTransportError('Recv unknown protobuf message')
+        raise TransportError('Recv unknown protobuf message')
 
 
 class YandexProtoConnectionHandler(ProtoConnectionHandler):
@@ -59,7 +59,7 @@ class YandexProtoConnectionHandler(ProtoConnectionHandler):
 
         answer = await conn.reader.readuntil(b'\r\n\r\n')
         if not answer.decode('utf-8').startswith('HTTP/1.1 101 Switching Protocols'):
-            raise ProtoTransportError('Unable to upgrade connection')
+            raise TransportError('Unable to upgrade connection')
         conn.logger.debug('The connection upgrade was successful')
 
     async def _send_connection_request(self, conn: ProtoConnection):
@@ -117,7 +117,7 @@ class YandexProtoConnectionHandler(ProtoConnectionHandler):
         error_text = '{}, status_code={}'.format(text, response.responseCode)
         if response.HasField("message"):
             error_text += ', message is "{}"'.format(response.message)
-        return ProtoTransportError(error_text)
+        return TransportError(error_text)
 
     async def on_connect(self, conn: ProtoConnection):
         await self._upgrade_connection(conn)

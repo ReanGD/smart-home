@@ -1,12 +1,12 @@
 import asyncio
-from re import compile
+import re
 
 
-LOWER_CASE_FIRST_RE = compile('(.)([A-Z][a-z]+)')
-LOWER_CASE_SECOND_RE = compile('([a-z0-9])([A-Z])')
+LOWER_CASE_FIRST_RE = re.compile('(.)([A-Z][a-z]+)')
+LOWER_CASE_SECOND_RE = re.compile('([a-z0-9])([A-Z])')
 
 
-class ProtoTransportError(RuntimeError):
+class TransportError(RuntimeError):
     def __init__(self, message):
         RuntimeError.__init__(self, message)
 
@@ -25,63 +25,48 @@ class SerrializeProtocol(object):
         self._protobuf_types = value
 
     async def send_protobuf(self, writer, message):
-        raise Exception('Not implementation "send_protobuf"')
+        raise TransportError('Not implementation "send_protobuf"')
 
     async def recv_protobuf(self, reader):
-        raise Exception('Not implementation "recv_protobuf"')
-
-
-class ProtoConnectionHandler(object):
-    async def on_connect(self, conn: 'ProtoConnection'):
-        pass
+        raise TransportError('Not implementation "recv_protobuf"')
 
 
 class ProtoConnection(object):
-    def __init__(self, reader: asyncio.streams.StreamReader, writer: asyncio.streams.StreamWriter,
-                 handler: ProtoConnectionHandler, protocol: SerrializeProtocol, logger, is_server: bool):
+    def __init__(self, logger):
         self._logger = logger
-        self._reader = reader
-        self._writer = writer
-        self._handler = handler
-        self._protocol = protocol
-        self._is_server = is_server
-        self._recv_loop_task = None
-        self._start_close = False
+        self._reader = None
+        self._writer = None
+        self.__protocol = None
+        self.__recv_loop_task = None
+        self.__start_close = False
 
     async def send_protobuf(self, message):
         if self._writer is None:
-            raise ProtoTransportError('Connection is not init')
+            raise TransportError('Connection is not init')
 
-        return await self._protocol.send_protobuf(self._writer, message)
+        return await self.__protocol.send_protobuf(self._writer, message)
 
     async def recv_protobuf(self):
         if self._reader is None:
-            raise ProtoTransportError('Connection is not init')
+            raise TransportError('Connection is not init')
 
-        return await self._protocol.recv_protobuf(self._reader)
+        return await self.__protocol.recv_protobuf(self._reader)
 
-    async def send(self, data):
-        self._writer.write(data)
-        return await self._writer.drain()
+    async def on_connect(self):
+        pass
 
-    @property
-    def reader(self):
-        return self._reader
+    async def _run(self, protocol: SerrializeProtocol,
+                   reader: asyncio.streams.StreamReader,
+                   writer: asyncio.streams.StreamWriter):
+        self.__protocol = protocol
+        self._reader = reader
+        self._writer = writer
+        await self.on_connect()
+        self.__recv_loop_task = asyncio.ensure_future(self.__recv_loop())
+        return self.__recv_loop_task
 
-    @property
-    def logger(self):
-        return self._logger
-
-    @property
-    def protocol(self):
-        return self._protocol
-
-    async def run_recv_loop(self):
-        await self._handler.on_connect(self)
-        self._recv_loop_task = asyncio.ensure_future(self._recv_loop())
-        return self._recv_loop_task
-
-    async def _recv_loop(self):
+    async def __recv_loop(self):
+        handler_name = ''
         try:
             self._logger.info('recv loop started')
             while True:
@@ -89,12 +74,16 @@ class ProtoConnection(object):
 
                 handler_name = LOWER_CASE_FIRST_RE.sub(r'\1_\2', message.DESCRIPTOR.name)
                 handler_name = 'on_' + LOWER_CASE_SECOND_RE.sub(r'\1_\2', handler_name).lower()
-                handler = getattr(self._handler, handler_name)
+                handler = getattr(self, handler_name)
                 await handler(self, message)
         except asyncio.CancelledError:
             self._logger.debug('The receiving cycle is stopped by cancel')
         except asyncio.IncompleteReadError:
             self._logger.debug('The receiving cycle is stopped by eof')
+        except AttributeError:
+            self._logger.debug('The receiving cycle is stopped, not found handler "{}"'
+                               .format(handler_name))
+            raise TransportError('Not found handler "{}"'.format(handler_name))
         except Exception as e:
             self._logger.error('The receiving cycle is stopped by unknown exception %s', e)
             raise e
@@ -102,19 +91,18 @@ class ProtoConnection(object):
             self._logger.info('Finished recv loop')
 
     async def close(self):
-        if self._start_close:
+        if self.__start_close:
             self._logger.info('Double close')
             return
 
         self._logger.debug('Connection close started')
-        self._start_close = True
-        if self._recv_loop_task is not None:
+        self.__start_close = True
+        if self.__recv_loop_task is not None:
             self._reader.feed_eof()
-            await asyncio.wait([self._recv_loop_task])
-            self._recv_loop_task = None
+            await asyncio.wait([self.__recv_loop_task])
+            self.__recv_loop_task = None
             self._reader = None
-            self._handler = None
-            self._protocol = None
+            self.__protocol = None
 
         if self._writer is not None:
             self._writer.close()
@@ -123,33 +111,33 @@ class ProtoConnection(object):
         self._logger.info('Connection close finished')
 
 
-async def create_client(host: str, port: int, handler_factory, protocol: SerrializeProtocol, logger,
-                        connection_class=ProtoConnection, max_attempt: int=5):
-    logger.info('Start connecting to %s:%d', host, port)
+class ClientConnection(ProtoConnection):
+    def __init__(self, logger):
+        super().__init__(logger)
 
-    ssl = (port == 443)
-    connection = None
-    handler = handler_factory()
-    for attempt in range(max_attempt):
-        try:
-            if attempt != 0:
-                logger.info('Connection attempt %d', attempt + 1)
+    @classmethod
+    async def create(cls, host: str, port: int, protocol: SerrializeProtocol, logger,
+                     max_attempt: int = 5):
+        logger.info('Start connecting to %s:%d', host, port)
 
-            reader, writer = await asyncio.open_connection(host, port, ssl=ssl)
-            connection = connection_class(reader, writer, handler, protocol, logger, False)
-            logger.info('Connected to %s:%s', host, port)
-            break
-        except ConnectionRefusedError as ex:
-            if attempt + 1 == max_attempt:
-                logger.critical('Сould not connect to %s:%d, message: %s', host, port)
-                raise
-            else:
+        ssl = (port == 443)
+        for attempt in range(max_attempt):
+            try:
+                if attempt != 0:
+                    logger.info('Connection attempt %d', attempt + 1)
+
+                reader, writer = await asyncio.open_connection(host, port, ssl=ssl)
+                connection = cls(logger)
+                logger.info('Connected to %s:%s', host, port)
+                await connection._run(protocol, reader, writer)
+                return connection
+            except ConnectionRefusedError as ex:
                 logger.error('Error connecting to %s:%d, message: %s', host, port, ex)
                 await asyncio.sleep(0.5)
-
-    await connection.run_recv_loop()
-
-    return connection
+        else:
+            msg = 'Сould not connect to {}:{}'.format(host, port)
+            logger.critical(msg)
+            raise TransportError(msg)
 
 
 class ProtoServer(object):
