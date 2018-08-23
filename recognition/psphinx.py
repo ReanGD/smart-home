@@ -1,7 +1,7 @@
 from os import devnull
+from audio import AudioSettings
 from pocketsphinx.pocketsphinx import Decoder
 from .base import HotwordRecognizer, HotwordRecognizerConfig
-from .audio_settings import AudioSettings
 
 
 class Pocketsphinx(HotwordRecognizer):

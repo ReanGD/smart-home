@@ -1,7 +1,7 @@
+from audio import AudioSettings
 from pyaudio import get_format_from_width
 from snowboy.snowboydetect import SnowboyDetect
 from .base import HotwordRecognizer, VADRecognizer, HotwordRecognizerConfig, VADRecognizerConfig
-from .audio_settings import AudioSettings
 
 
 class Snowboy(HotwordRecognizer, VADRecognizer):

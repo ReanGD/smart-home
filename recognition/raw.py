@@ -1,6 +1,5 @@
-from audio import StreamSettings, AudioData
+from audio import StreamSettings, AudioData, AudioSettings
 from .base import PhraseRecognizer, PhraseRecognizerConfig
-from .audio_settings import AudioSettings
 
 
 class Raw(PhraseRecognizer):
