@@ -1,8 +1,8 @@
-from .base_transport import TransportError, SerrializeProtocol, ClientConnection, create_server
+from .base_transport import TransportError, SerrializeProtocol, ClientConnection, ProtoServer
 
 __all__ = [
     'TransportError',
     'SerrializeProtocol',
     'ClientConnection',
-    'create_server',
+    'ProtoServer',
 ]

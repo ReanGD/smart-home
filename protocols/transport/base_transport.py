@@ -1,5 +1,5 @@
-import asyncio
 import re
+import asyncio
 
 
 LOWER_CASE_FIRST_RE = re.compile('(.)([A-Z][a-z]+)')
@@ -55,9 +55,9 @@ class ProtoConnection(object):
     async def on_connect(self):
         pass
 
-    async def _run(self, protocol: SerrializeProtocol,
-                   reader: asyncio.streams.StreamReader,
-                   writer: asyncio.streams.StreamWriter):
+    async def run(self, protocol: SerrializeProtocol,
+                  reader: asyncio.streams.StreamReader,
+                  writer: asyncio.streams.StreamWriter):
         self.__protocol = protocol
         self._reader = reader
         self._writer = writer
@@ -129,7 +129,7 @@ class ClientConnection(ProtoConnection):
                 reader, writer = await asyncio.open_connection(host, port, ssl=ssl)
                 connection = cls(logger)
                 logger.info('Connected to %s:%s', host, port)
-                await connection._run(protocol, reader, writer)
+                await connection.run(protocol, reader, writer)
                 return connection
             except ConnectionRefusedError as ex:
                 logger.error('Error connecting to %s:%d, message: %s', host, port, ex)
@@ -140,39 +140,11 @@ class ClientConnection(ProtoConnection):
             raise TransportError(msg)
 
 
-class ProtoServer(object):
-    def __init__(self, server_coro, logger):
-        self._connections = set()
-        self._logger = logger
-        self._server_task = asyncio.ensure_future(server_coro)
-
-    def add_connection(self, connection: ProtoConnection):
-        self._connections.add(connection)
-
-    def remove_connection(self, connection: ProtoConnection):
-        self._connections.remove(connection)
-
-    async def send_protobuf_to_all(self, message):
-        tasks = [connection.send_protobuf(message) for connection in self._connections]
-        await asyncio.gather(*tasks)
-
-    async def close(self):
-        self._logger.debug('Server close started')
-        tasks = [connection.close() for connection in self._connections]
-        await asyncio.gather(*tasks)
-        self._connections.clear()
-
-        server = self._server_task.result()
-        server.close()
-        await server.wait_closed()
-        self._logger.info('Sever close finished')
-
-
 class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
-    def __init__(self, server: ProtoServer, handler_factory, protocol, logger):
+    def __init__(self, server: 'ProtoServer', handler_factory, protocol, logger):
         super().__init__()
         self._server = server
-        self._handler = handler_factory()
+        self._handler = handler_factory(logger)
         self._protocol = protocol
         self._logger = logger
 
@@ -181,21 +153,20 @@ class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
         self._over_ssl = False
 
     def connection_made(self, transport):
-        self._logger.info('Accept connect')
-        self._stream_reader.set_transport(transport)
-        self._over_ssl = transport.get_extra_info('sslcontext') is not None
-        stream_writer = asyncio.StreamWriter(transport, self, self._stream_reader, self._loop)
-
-        self._connection = ProtoConnection(self._stream_reader, stream_writer, self._handler,
-                                           self._protocol, self._logger, True)
-        self._server.add_connection(self._connection)
         # TODO: remove task?
-        self._loop.create_task(self.on_accept())
+        self._loop.create_task(self.on_accept(transport))
 
-    async def on_accept(self):
+    async def on_accept(self, transport):
+        self._logger.info('Accept connect')
         try:
-            recv_loop = await self._connection.run_recv_loop()
-            asyncio.wait(recv_loop)
+            self._connection = ProtoConnection(self._logger)
+
+            self._stream_reader.set_transport(transport)
+            self._over_ssl = transport.get_extra_info('sslcontext') is not None
+            stream_writer = asyncio.StreamWriter(transport, self, self._stream_reader, self._loop)
+            task = await self._connection.run(self._protocol, self._stream_reader, stream_writer)
+            asyncio.wait(task)
+            self._server.add_connection(self._connection)
         except Exception as e:
             self._logger.error('unknown exception: %s', e)
         finally:
@@ -227,13 +198,38 @@ class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
         return True
 
 
-async def create_server(host: str, port: int, handler_factory, protocol: SerrializeProtocol,
-                        logger) -> ProtoServer:
-    logger.info('Start server on %s:%d', host, port)
-    server = None
+class ProtoServer(object):
+    def __init__(self, logger):
+        self._connections = set()
+        self._logger = logger
+        self._server_task = None
 
-    def factory():
-        return ServerStreamReaderProtocol(server, handler_factory, protocol, logger)
+    def add_connection(self, connection: ProtoConnection):
+        self._connections.add(connection)
 
-    server = ProtoServer(asyncio.get_event_loop().create_server(factory, host, port), logger)
-    return server
+    def remove_connection(self, connection: ProtoConnection):
+        self._connections.remove(connection)
+
+    async def send_protobuf_to_all(self, message):
+        tasks = [connection.send_protobuf(message) for connection in self._connections]
+        await asyncio.gather(*tasks)
+
+    async def run(self, host: str, port: int, handler_factory, protocol: SerrializeProtocol):
+        self._logger.info('Start server on %s:%d', host, port)
+
+        def factory():
+            return ServerStreamReaderProtocol(self, handler_factory, protocol, self._logger)
+
+        server_coro = asyncio.get_event_loop().create_server(factory, host, port)
+        self._server_task = asyncio.ensure_future(server_coro)
+
+    async def close(self):
+        self._logger.debug('Server close started')
+        tasks = [connection.close() for connection in self._connections]
+        await asyncio.gather(*tasks)
+        self._connections.clear()
+
+        server = self._server_task.result()
+        server.close()
+        await server.wait_closed()
+        self._logger.info('Sever close finished')
