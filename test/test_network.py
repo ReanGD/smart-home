@@ -1,8 +1,8 @@
 import unittest
 import asyncio
 from test.test_proto import *
-from protocols.transport import ProtoConnection, create_server, create_client
 from protocols.home_assistant import HASerrializeProtocol
+from protocols.transport import ClientConnection, ProtoConnection, ProtoServer
 
 import logging
 from sys import stdout
@@ -12,27 +12,51 @@ log_handler = logging.StreamHandler(stdout)
 log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
 
 
-class HandlerMain(object):
-    def __init__(self, event: asyncio.Event):
+class TestClientConnection(ClientConnection):
+    def __init__(self, logger):
+        super().__init__(logger)
+        self.event = None
+        self.recv_messages = []
+
+    def set_event(self, event):
+        self.event = event
+
+    async def on_test_message1(self, message: TestMessage1):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        await self.send_protobuf(TestMessage1Result(text=message.DESCRIPTOR.name+'Response'))
+
+    async def on_test_message1_result(self, message: TestMessage1Result):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        await self.send_protobuf(TestMessage2(text=message.DESCRIPTOR.name+'Request'))
+
+    async def on_test_message2(self, message: TestMessage2):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        await self.send_protobuf(TestMessage2Result(text=message.DESCRIPTOR.name+'Response'))
+
+    async def on_test_message2_result(self, message: TestMessage2Result):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        self.event.set()
+
+
+class TestServerConnection(ProtoConnection):
+    def __init__(self, logger, event: asyncio.Event):
+        super().__init__(logger)
         self.event = event
         self.recv_messages = []
 
-    async def on_connect(self, conn: ProtoConnection):
-        pass
-
-    async def on_test_message1(self, conn: ProtoConnection, message: TestMessage1):
+    async def on_test_message1(self, message: TestMessage1):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
-        await conn.send_protobuf(TestMessage1Result(text=message.DESCRIPTOR.name+'Response'))
+        await self.send_protobuf(TestMessage1Result(text=message.DESCRIPTOR.name+'Response'))
 
-    async def on_test_message1_result(self, conn: ProtoConnection, message: TestMessage1Result):
+    async def on_test_message1_result(self, message: TestMessage1Result):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
-        await conn.send_protobuf(TestMessage2(text=message.DESCRIPTOR.name+'Request'))
+        await self.send_protobuf(TestMessage2(text=message.DESCRIPTOR.name+'Request'))
 
-    async def on_test_message2(self, conn: ProtoConnection, message: TestMessage2):
+    async def on_test_message2(self, message: TestMessage2):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
-        await conn.send_protobuf(TestMessage2Result(text=message.DESCRIPTOR.name+'Response'))
+        await self.send_protobuf(TestMessage2Result(text=message.DESCRIPTOR.name+'Response'))
 
-    async def on_test_message2_result(self, conn: ProtoConnection, message: TestMessage2Result):
+    async def on_test_message2_result(self, message: TestMessage2Result):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
         self.event.set()
 
@@ -54,21 +78,23 @@ class TestNetwork(unittest.TestCase):
 
         return logger
 
-    async def create_server(self, handler_factory):
-        return await create_server(self.host, self.port, handler_factory, self.server_protocol,
-                                   self.get_logger('server'))
+    async def create_server(self):
+        server = ProtoServer(self.get_logger('server'))
+        def handler_factory(logger):
+            return TestServerConnection(logger, self.finish_event)
+        return await server.run(self.host, self.port, handler_factory, self.server_protocol)
 
-    async def create_client(self, handler_factory):
-        return await create_client(self.host, self.port, handler_factory, self.client_protocol,
-                                   self.get_logger('client'))
+    async def create_client(self):
+        client = await TestClientConnection.create(self.host, self.port, self.client_protocol,
+                                                 self.get_logger('client'))
 
-    def handler_generator(self):
-        return HandlerMain(self.finish_event)
+        client.set_event(self.finish_event)
+        return client
 
     def test_client_send(self):
         async def client_server():
-            server = await self.create_server(self.handler_generator)
-            client = await self.create_client(self.handler_generator)
+            server = await self.create_server()
+            client = await self.create_client()
 
             await client.send_protobuf(TestMessage1(text='Request'))
 
@@ -81,8 +107,8 @@ class TestNetwork(unittest.TestCase):
 
     def test_server_send(self):
         async def client_server():
-            server = await self.create_server(self.handler_generator)
-            client = await self.create_client(self.handler_generator)
+            server = await self.create_server()
+            client = await self.create_client()
 
             await server.send_protobuf_to_all(TestMessage1(text='Request'))
 

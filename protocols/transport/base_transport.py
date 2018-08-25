@@ -75,13 +75,13 @@ class ProtoConnection(object):
                 handler_name = LOWER_CASE_FIRST_RE.sub(r'\1_\2', message.DESCRIPTOR.name)
                 handler_name = 'on_' + LOWER_CASE_SECOND_RE.sub(r'\1_\2', handler_name).lower()
                 handler = getattr(self, handler_name)
-                await handler(self, message)
+                await handler(message)
         except asyncio.CancelledError:
             self._logger.debug('The receiving cycle is stopped by cancel')
         except asyncio.IncompleteReadError:
             self._logger.debug('The receiving cycle is stopped by eof')
         except AttributeError:
-            self._logger.debug('The receiving cycle is stopped, not found handler "{}"'
+            self._logger.error('The receiving cycle is stopped, not found handler "{}"'
                                .format(handler_name))
             raise TransportError('Not found handler "{}"'.format(handler_name))
         except Exception as e:
@@ -144,31 +144,28 @@ class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
     def __init__(self, server: 'ProtoServer', handler_factory, protocol, logger):
         super().__init__()
         self._server = server
-        self._handler = handler_factory(logger)
         self._protocol = protocol
         self._logger = logger
 
         self._stream_reader = asyncio.StreamReader()
-        self._connection = None
+        self._connection = handler_factory(logger)
         self._over_ssl = False
 
     def connection_made(self, transport):
-        # TODO: remove task?
         self._loop.create_task(self.on_accept(transport))
 
     async def on_accept(self, transport):
         self._logger.info('Accept connect')
         try:
-            self._connection = ProtoConnection(self._logger)
-
             self._stream_reader.set_transport(transport)
             self._over_ssl = transport.get_extra_info('sslcontext') is not None
             stream_writer = asyncio.StreamWriter(transport, self, self._stream_reader, self._loop)
             task = await self._connection.run(self._protocol, self._stream_reader, stream_writer)
-            asyncio.wait(task)
             self._server.add_connection(self._connection)
+            await task
         except Exception as e:
-            self._logger.error('unknown exception: %s', e)
+            self._logger.error('Unknown exception: %s', e)
+            raise e
         finally:
             self._logger.info('Connect was closed')
 
@@ -222,6 +219,8 @@ class ProtoServer(object):
 
         server_coro = asyncio.get_event_loop().create_server(factory, host, port)
         self._server_task = asyncio.ensure_future(server_coro)
+
+        return self
 
     async def close(self):
         self._logger.debug('Server close started')
