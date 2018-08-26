@@ -90,6 +90,28 @@ class ProtoConnection(object):
         finally:
             self._logger.info('Finished recv loop')
 
+    async def connect(self, host: str, port: int, protocol: SerrializeProtocol,
+                      max_attempt: int = 5):
+        self._logger.info('Start connecting to %s:%d', host, port)
+
+        ssl = (port == 443)
+        for attempt in range(max_attempt):
+            try:
+                if attempt != 0:
+                    self._logger.info('Connection attempt %d', attempt + 1)
+
+                reader, writer = await asyncio.open_connection(host, port, ssl=ssl)
+                self._logger.info('Connected to %s:%s', host, port)
+                await self.run(protocol, reader, writer)
+                return
+            except ConnectionRefusedError as ex:
+                self._logger.error('Error connecting to %s:%d, message: %s', host, port, ex)
+                await asyncio.sleep(0.5)
+        else:
+            msg = 'Сould not connect to {}:{}'.format(host, port)
+            self._logger.critical(msg)
+            raise TransportError(msg)
+
     async def close(self):
         if self.__start_close:
             self._logger.info('Double close')
@@ -109,35 +131,6 @@ class ProtoConnection(object):
             self._writer = None
 
         self._logger.info('Connection close finished')
-
-
-class ClientConnection(ProtoConnection):
-    def __init__(self, logger):
-        super().__init__(logger)
-
-    @classmethod
-    async def create(cls, host: str, port: int, protocol: SerrializeProtocol, logger,
-                     max_attempt: int = 5):
-        logger.info('Start connecting to %s:%d', host, port)
-
-        ssl = (port == 443)
-        for attempt in range(max_attempt):
-            try:
-                if attempt != 0:
-                    logger.info('Connection attempt %d', attempt + 1)
-
-                reader, writer = await asyncio.open_connection(host, port, ssl=ssl)
-                connection = cls(logger)
-                logger.info('Connected to %s:%s', host, port)
-                await connection.run(protocol, reader, writer)
-                return connection
-            except ConnectionRefusedError as ex:
-                logger.error('Error connecting to %s:%d, message: %s', host, port, ex)
-                await asyncio.sleep(0.5)
-        else:
-            msg = 'Сould not connect to {}:{}'.format(host, port)
-            logger.critical(msg)
-            raise TransportError(msg)
 
 
 class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
