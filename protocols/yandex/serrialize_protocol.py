@@ -1,7 +1,6 @@
-import asyncio
 from .basic_pb2 import ConnectionResponse
 from .voiceproxy_pb2 import AdvancedASROptions, ConnectionRequest, AddData
-from protocols.transport import TransportError, SerrializeProtocol, ProtoConnectionHandler, ProtoConnection
+from protocols.transport import TransportError, SerrializeProtocol, ProtoConnection
 
 
 class YandexSerrializeProtocol(SerrializeProtocol):
@@ -37,8 +36,9 @@ class YandexSerrializeProtocol(SerrializeProtocol):
         raise TransportError('Recv unknown protobuf message')
 
 
-class YandexProtoConnectionHandler(ProtoConnectionHandler):
-    def __init__(self, app, host, port, user_uuid, api_key, topic, lang, disable_antimat):
+class YandexClient(ProtoConnection):
+    def __init__(self, logger, app, host, port, user_uuid, api_key, topic, lang, disable_antimat):
+        super().__init__(logger)
         self._app = app
         self._host = host
         self._port = port
@@ -48,21 +48,23 @@ class YandexProtoConnectionHandler(ProtoConnectionHandler):
         self._lang = lang
         self._disable_antimat = disable_antimat
 
-    async def _upgrade_connection(self, conn: ProtoConnection):
+    async def __upgrade_connection(self):
         request = ('GET /asr_partial_checked HTTP/1.1\r\n'
                    'User-Agent: {app}\r\n'
                    'Host: {host}:{port}\r\n'
                    'Upgrade: dictation\r\n\r\n'
                    ).format(app=self._app, host=self._host, port=self._port).encode("utf-8")
-        conn.logger.debug('Start a connection upgrade')
-        await conn.send(request)
+        self._logger.debug('Start a connection upgrade')
 
-        answer = await conn.reader.readuntil(b'\r\n\r\n')
+        self._writer.write(request)
+        await self._writer.drain()
+
+        answer = await self._reader.readuntil(b'\r\n\r\n')
         if not answer.decode('utf-8').startswith('HTTP/1.1 101 Switching Protocols'):
             raise TransportError('Unable to upgrade connection')
-        conn.logger.debug('The connection upgrade was successful')
+        self._logger.debug('The connection upgrade was successful')
 
-    async def _send_connection_request(self, conn: ProtoConnection):
+    async def __send_connection_request(self):
         advanced_asr_options = AdvancedASROptions(
             partial_results=True,
             # beam=-1,
@@ -100,17 +102,17 @@ class YandexProtoConnectionHandler(ProtoConnectionHandler):
             advancedASROptions=advanced_asr_options
         )
 
-        conn.logger.debug('Start a connection init')
-        await conn.send_protobuf(request)
+        self._logger.debug('Start a connection init')
+        await self.send_protobuf(request)
 
-        orig_protobuf_types = conn.protocol.protobuf_types
-        conn.protocol.protobuf_types = [ConnectionResponse]
-        message = await conn.recv_protobuf()
-        conn.protocol.protobuf_types = orig_protobuf_types
+        orig_protobuf_types = self._protocol.protobuf_types
+        self._protocol.protobuf_types = [ConnectionResponse]
+        message = await self.recv_protobuf()
+        self._protocol.protobuf_types = orig_protobuf_types
 
         if message.responseCode != 200:
-            raise YandexProtoConnectionHandler.error_from_response(message, 'Wrong response from server')
-        conn.logger.debug('The connection init was successful')
+            raise YandexClient.error_from_response(message, 'Wrong response from server')
+        self._logger.debug('The connection init was successful')
 
     @staticmethod
     def error_from_response(response, text):
@@ -119,15 +121,9 @@ class YandexProtoConnectionHandler(ProtoConnectionHandler):
             error_text += ', message is "{}"'.format(response.message)
         return TransportError(error_text)
 
-    async def on_connect(self, conn: ProtoConnection):
-        await self._upgrade_connection(conn)
-        await self._send_connection_request(conn)
-
-
-class YandexProtoConnection(ProtoConnection):
-    def __init__(self, reader: asyncio.streams.StreamReader, writer: asyncio.streams.StreamWriter,
-                 handler: YandexProtoConnectionHandler, protocol: YandexSerrializeProtocol, logger, is_server):
-        super().__init__(reader, writer, handler, protocol, logger, is_server)
+    async def on_connect(self):
+        await self.__upgrade_connection()
+        await self.__send_connection_request()
 
     async def send_audio_data(self, data):
         if data is None:

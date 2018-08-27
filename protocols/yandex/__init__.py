@@ -13,13 +13,12 @@ from . import voiceproxy_pb2
 
 sys.path.remove(current_dir)
 
-from .serrialize_protocol import YandexSerrializeProtocol, YandexProtoConnectionHandler, YandexProtoConnection
+from .serrialize_protocol import YandexSerrializeProtocol, YandexClient
 from .voiceproxy_pb2 import AddDataResponse
 
 
 __all__ = [
     'AddDataResponse',
-    'YandexProtoConnection',
     'YandexSerrializeProtocol',
-    'YandexProtoConnectionHandler',
+    'YandexClient',
 ]

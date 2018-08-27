@@ -36,7 +36,7 @@ class ProtoConnection(object):
         self._logger = logger
         self._reader = None
         self._writer = None
-        self.__protocol = None
+        self._protocol = None
         self.__recv_loop_task = None
         self.__start_close = False
 
@@ -44,13 +44,13 @@ class ProtoConnection(object):
         if self._writer is None:
             raise TransportError('Connection is not init')
 
-        return await self.__protocol.send_protobuf(self._writer, message)
+        return await self._protocol.send_protobuf(self._writer, message)
 
     async def recv_protobuf(self):
         if self._reader is None:
             raise TransportError('Connection is not init')
 
-        return await self.__protocol.recv_protobuf(self._reader)
+        return await self._protocol.recv_protobuf(self._reader)
 
     async def on_connect(self):
         pass
@@ -58,7 +58,7 @@ class ProtoConnection(object):
     async def run(self, protocol: SerrializeProtocol,
                   reader: asyncio.streams.StreamReader,
                   writer: asyncio.streams.StreamWriter):
-        self.__protocol = protocol
+        self._protocol = protocol
         self._reader = reader
         self._writer = writer
         await self.on_connect()
@@ -68,7 +68,7 @@ class ProtoConnection(object):
     async def __recv_loop(self):
         handler_name = ''
         try:
-            self._logger.info('recv loop started')
+            self._logger.info('Recv loop started')
             while True:
                 message = await self.recv_protobuf()
 
@@ -124,7 +124,7 @@ class ProtoConnection(object):
             await asyncio.wait([self.__recv_loop_task])
             self.__recv_loop_task = None
             self._reader = None
-            self.__protocol = None
+            self._protocol = None
 
         if self._writer is not None:
             self._writer.close()
@@ -163,7 +163,7 @@ class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
             self._logger.info('Connect was closed')
 
     def connection_lost(self, exc):
-        self._logger.debug('connection_lost')
+        self._logger.debug('Connection lost')
         if self._stream_reader is not None:
             if exc is None:
                 self._stream_reader.feed_eof()
