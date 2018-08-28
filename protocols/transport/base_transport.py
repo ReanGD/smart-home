@@ -24,14 +24,14 @@ class SerrializeProtocol(object):
     def protobuf_types(self, value):
         self._protobuf_types = value
 
-    async def send_protobuf(self, writer, message):
-        raise TransportError('Not implementation "send_protobuf"')
+    async def send(self, writer, message):
+        raise TransportError('Not implementation "send"')
 
-    async def recv_protobuf(self, reader):
-        raise TransportError('Not implementation "recv_protobuf"')
+    async def recv(self, reader):
+        raise TransportError('Not implementation "recv"')
 
 
-class ProtoConnection(object):
+class TCPConnection(object):
     def __init__(self, logger):
         self._logger = logger
         self._reader = None
@@ -40,17 +40,17 @@ class ProtoConnection(object):
         self.__recv_loop_task = None
         self.__start_close = False
 
-    async def send_protobuf(self, message):
+    async def send(self, message):
         if self._writer is None:
             raise TransportError('Connection is not init')
 
-        return await self._protocol.send_protobuf(self._writer, message)
+        return await self._protocol.send(self._writer, message)
 
-    async def recv_protobuf(self):
+    async def recv(self):
         if self._reader is None:
             raise TransportError('Connection is not init')
 
-        return await self._protocol.recv_protobuf(self._reader)
+        return await self._protocol.recv(self._reader)
 
     async def on_connect(self):
         pass
@@ -70,7 +70,7 @@ class ProtoConnection(object):
         try:
             self._logger.info('Recv loop started')
             while True:
-                message = await self.recv_protobuf()
+                message = await self.recv()
 
                 handler_name = LOWER_CASE_FIRST_RE.sub(r'\1_\2', message.DESCRIPTOR.name)
                 handler_name = 'on_' + LOWER_CASE_SECOND_RE.sub(r'\1_\2', handler_name).lower()
@@ -133,8 +133,8 @@ class ProtoConnection(object):
         self._logger.info('Connection close finished')
 
 
-class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
-    def __init__(self, server: 'ProtoServer', handler_factory, protocol, logger):
+class ServerConnection(asyncio.streams.FlowControlMixin):
+    def __init__(self, server: 'TCPServer', handler_factory, protocol, logger):
         super().__init__()
         self._server = server
         self._protocol = protocol
@@ -188,27 +188,27 @@ class ServerStreamReaderProtocol(asyncio.streams.FlowControlMixin):
         return True
 
 
-class ProtoServer(object):
+class TCPServer(object):
     def __init__(self, logger):
         self._connections = set()
         self._logger = logger
         self._server_task = None
 
-    def add_connection(self, connection: ProtoConnection):
+    def add_connection(self, connection: TCPConnection):
         self._connections.add(connection)
 
-    def remove_connection(self, connection: ProtoConnection):
+    def remove_connection(self, connection: TCPConnection):
         self._connections.remove(connection)
 
-    async def send_protobuf_to_all(self, message):
-        tasks = [connection.send_protobuf(message) for connection in self._connections]
+    async def send_to_all(self, message):
+        tasks = [connection.send(message) for connection in self._connections]
         await asyncio.gather(*tasks)
 
     async def run(self, host: str, port: int, handler_factory, protocol: SerrializeProtocol):
         self._logger.info('Start server on %s:%d', host, port)
 
         def factory():
-            return ServerStreamReaderProtocol(self, handler_factory, protocol, self._logger)
+            return ServerConnection(self, handler_factory, protocol, self._logger)
 
         server_coro = asyncio.get_event_loop().create_server(factory, host, port)
         self._server_task = asyncio.ensure_future(server_coro)

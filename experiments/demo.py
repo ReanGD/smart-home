@@ -4,7 +4,7 @@ from npl import Morphology
 from etc import all_entitis
 from logging import getLogger
 from audio import StreamSettings, Microphone
-from protocols.transport import ProtoConnection, create_client
+from protocols.transport import TCPConnection, create_client
 from protocols.home_assistant import (HASerrializeProtocol, StartRecognition, SetDeviceState,
                                       entity_to_protobuf)
 
@@ -16,10 +16,10 @@ class HomeAssistentHandler(object):
     def __init__(self, event):
         self._event = event
 
-    async def on_connect(self, conn: ProtoConnection):
+    async def on_connect(self, conn: TCPConnection):
         pass
 
-    async def on_start_recognition(self, conn: ProtoConnection, message: StartRecognition):
+    async def on_start_recognition(self, conn: TCPConnection, message: StartRecognition):
         self._event.set()
 
 
@@ -60,7 +60,7 @@ class Demo(object):
             msg = SetDeviceState(device_action=device_action,
                                  device=device,
                                  place=place)
-            await self._client.send_protobuf(msg)
+            await self._client.send(msg)
 
         return success, cmd
 

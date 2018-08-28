@@ -2,7 +2,7 @@ import unittest
 import asyncio
 from test.test_proto import *
 from protocols.home_assistant import HASerrializeProtocol
-from protocols.transport import ProtoConnection, ProtoServer
+from protocols.transport import TCPConnection, TCPServer
 
 import logging
 from sys import stdout
@@ -12,7 +12,7 @@ log_handler = logging.StreamHandler(stdout)
 log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
 
 
-class TestConnection(ProtoConnection):
+class TestConnection(TCPConnection):
     def __init__(self, logger, event: asyncio.Event):
         super().__init__(logger)
         self.event = event
@@ -20,15 +20,15 @@ class TestConnection(ProtoConnection):
 
     async def on_test_message1(self, message: TestMessage1):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
-        await self.send_protobuf(TestMessage1Result(text=message.DESCRIPTOR.name+'Response'))
+        await self.send(TestMessage1Result(text=message.DESCRIPTOR.name + 'Response'))
 
     async def on_test_message1_result(self, message: TestMessage1Result):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
-        await self.send_protobuf(TestMessage2(text=message.DESCRIPTOR.name+'Request'))
+        await self.send(TestMessage2(text=message.DESCRIPTOR.name + 'Request'))
 
     async def on_test_message2(self, message: TestMessage2):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
-        await self.send_protobuf(TestMessage2Result(text=message.DESCRIPTOR.name+'Response'))
+        await self.send(TestMessage2Result(text=message.DESCRIPTOR.name + 'Response'))
 
     async def on_test_message2_result(self, message: TestMessage2Result):
         self.recv_messages.append((message.DESCRIPTOR.name, message.text))
@@ -53,7 +53,7 @@ class TestNetwork(unittest.TestCase):
         return logger
 
     async def create_server(self):
-        server = ProtoServer(self.get_logger('server'))
+        server = TCPServer(self.get_logger('server'))
 
         def handler_factory(logger):
             return TestConnection(logger, self.finish_event)
@@ -69,7 +69,7 @@ class TestNetwork(unittest.TestCase):
             server = await self.create_server()
             client = await self.create_client()
 
-            await client.send_protobuf(TestMessage1(text='Request'))
+            await client.send(TestMessage1(text='Request'))
 
             await self.finish_event.wait()
             await client.close()
@@ -83,7 +83,7 @@ class TestNetwork(unittest.TestCase):
             server = await self.create_server()
             client = await self.create_client()
 
-            await server.send_protobuf_to_all(TestMessage1(text='Request'))
+            await server.send_to_all(TestMessage1(text='Request'))
 
             await self.finish_event.wait()
             await client.close()

@@ -1,13 +1,13 @@
 from .basic_pb2 import ConnectionResponse
 from .voiceproxy_pb2 import AdvancedASROptions, ConnectionRequest, AddData
-from protocols.transport import TransportError, SerrializeProtocol, ProtoConnection
+from protocols.transport import TransportError, SerrializeProtocol, TCPConnection
 
 
 class YandexSerrializeProtocol(SerrializeProtocol):
     def __init__(self, protobuf_types, logger):
         super().__init__(protobuf_types, logger)
 
-    async def send_protobuf(self, writer, message):
+    async def send(self, writer, message):
         message_bin = message.SerializeToString()
         message_len = len(message_bin)
         message_name = message.DESCRIPTOR.name
@@ -18,7 +18,7 @@ class YandexSerrializeProtocol(SerrializeProtocol):
         writer.write(message_bin)
         await writer.drain()
 
-    async def recv_protobuf(self, reader):
+    async def recv(self, reader):
         package_size_bin = await reader.readuntil(b'\r\n')
         package_size = int(b'0x' + package_size_bin[:-2], 0)
         package_bin = await reader.readexactly(package_size)
@@ -36,7 +36,7 @@ class YandexSerrializeProtocol(SerrializeProtocol):
         raise TransportError('Recv unknown protobuf message')
 
 
-class YandexClient(ProtoConnection):
+class YandexClient(TCPConnection):
     def __init__(self, logger, app, host, port, user_uuid, api_key, topic, lang, disable_antimat):
         super().__init__(logger)
         self._app = app
@@ -103,11 +103,11 @@ class YandexClient(ProtoConnection):
         )
 
         self._logger.debug('Start a connection init')
-        await self.send_protobuf(request)
+        await self.send(request)
 
         orig_protobuf_types = self._protocol.protobuf_types
         self._protocol.protobuf_types = [ConnectionResponse]
-        message = await self.recv_protobuf()
+        message = await self.recv()
         self._protocol.protobuf_types = orig_protobuf_types
 
         if message.responseCode != 200:
@@ -128,7 +128,7 @@ class YandexClient(ProtoConnection):
     async def send_audio_data(self, data):
         if data is None:
             self._logger.debug('Start send finished audio data chank')
-            await self.send_protobuf(AddData(lastChunk=True))
+            await self.send(AddData(lastChunk=True))
         else:
             self._logger.debug('Start send audio data (%d)', len(data))
-            await self.send_protobuf(AddData(lastChunk=False, audioData=data))
+            await self.send(AddData(lastChunk=False, audioData=data))

@@ -1,5 +1,5 @@
 import logging
-from protocols.transport import ProtoConnection, create_server
+from protocols.transport import TCPConnection, create_server
 from protocols.home_assistant import (HASerrializeProtocol, StartRecognition, SetDeviceState,
                                       protobuf_to_device_id)
 import homeassistant.components.switch as switch
@@ -12,10 +12,10 @@ class HomeAssistentHandler(object):
     def __init__(self, hass):
         self._hass = hass
 
-    async def on_connect(self, conn: ProtoConnection):
+    async def on_connect(self, conn: TCPConnection):
         pass
 
-    async def on_set_device_state(self, conn: ProtoConnection, message: SetDeviceState):
+    async def on_set_device_state(self, conn: TCPConnection, message: SetDeviceState):
         ids = protobuf_to_device_id(message.device, message.place, message.device_action)
         for device_id in ids:
             if message.device_action == SetDeviceState.TurnOff:
@@ -36,7 +36,7 @@ class HomeAssistentServer(object):
         return HomeAssistentHandler(self._hass)
 
     async def activate_handle(self, call):
-        await self._server.send_protobuf_to_all(StartRecognition())
+        await self._server.send_to_all(StartRecognition())
 
     async def run(self, domain):
         protocol = HASerrializeProtocol([SetDeviceState], logger)

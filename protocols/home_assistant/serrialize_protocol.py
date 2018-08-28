@@ -13,7 +13,7 @@ class HASerrializeProtocol(SerrializeProtocol):
     def _hash(message):
         return md5(message.encode('utf-8')).digest()
 
-    async def send_protobuf(self, writer, message):
+    async def send(self, writer, message):
         message_bin = message.SerializeToString()
         message_name = message.DESCRIPTOR.name
 
@@ -23,7 +23,7 @@ class HASerrializeProtocol(SerrializeProtocol):
         writer.write(message_bin)
         await writer.drain()
 
-    async def recv_protobuf(self, reader):
+    async def recv(self, reader):
         package_size_bin = await reader.readexactly(4)
         package_size = unpack('>I', package_size_bin)[0]
         package_bin = await reader.readexactly(package_size)
