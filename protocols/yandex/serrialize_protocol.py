@@ -1,12 +1,9 @@
+from protocols.transport import TransportError, SerrializeProtocol, TCPConnection
 from .basic_pb2 import ConnectionResponse
 from .voiceproxy_pb2 import AdvancedASROptions, ConnectionRequest, AddData
-from protocols.transport import TransportError, SerrializeProtocol, TCPConnection
 
 
 class YandexSerrializeProtocol(SerrializeProtocol):
-    def __init__(self, protobuf_types, logger):
-        super().__init__(protobuf_types, logger)
-
     async def send(self, writer, message):
         message_bin = message.SerializeToString()
         message_len = len(message_bin)
@@ -19,6 +16,7 @@ class YandexSerrializeProtocol(SerrializeProtocol):
         await writer.drain()
 
     async def recv(self, reader):
+        # pylint: disable=broad-except
         package_size_bin = await reader.readuntil(b'\r\n')
         package_size = int(b'0x' + package_size_bin[:-2], 0)
         package_bin = await reader.readexactly(package_size)
@@ -27,7 +25,8 @@ class YandexSerrializeProtocol(SerrializeProtocol):
             message = proto_type()
             try:
                 message.ParseFromString(package_bin)
-                self._logger.debug('Recv protobuf message "%s" (%d bytes)', message.DESCRIPTOR.name, package_size)
+                self._logger.debug('Recv protobuf message "%s" (%d bytes)',
+                                   message.DESCRIPTOR.name, package_size)
                 return message
             except Exception:
                 pass
@@ -38,33 +37,12 @@ class YandexSerrializeProtocol(SerrializeProtocol):
 
 class YandexClient(TCPConnection):
     def __init__(self, logger, app, host, port, user_uuid, api_key, topic, lang, disable_antimat):
+        # pylint: disable=too-many-arguments
         super().__init__(logger)
         self._app = app
         self._host = host
         self._port = port
-        self._user_uuid = user_uuid
-        self._api_key = api_key
-        self._topic = topic
-        self._lang = lang
-        self._disable_antimat = disable_antimat
 
-    async def __upgrade_connection(self):
-        request = ('GET /asr_partial_checked HTTP/1.1\r\n'
-                   'User-Agent: {app}\r\n'
-                   'Host: {host}:{port}\r\n'
-                   'Upgrade: dictation\r\n\r\n'
-                   ).format(app=self._app, host=self._host, port=self._port).encode("utf-8")
-        self._logger.debug('Start a connection upgrade')
-
-        self._writer.write(request)
-        await self._writer.drain()
-
-        answer = await self._reader.readuntil(b'\r\n\r\n')
-        if not answer.decode('utf-8').startswith('HTTP/1.1 101 Switching Protocols'):
-            raise TransportError('Unable to upgrade connection')
-        self._logger.debug('The connection upgrade was successful')
-
-    async def __send_connection_request(self):
         advanced_asr_options = AdvancedASROptions(
             partial_results=True,
             # beam=-1,
@@ -86,24 +64,41 @@ class YandexClient(TCPConnection):
             manual_punctuation=False
         )
 
-        request = ConnectionRequest(
+        self._connection_request = ConnectionRequest(
             speechkitVersion='',
             serviceName='asr_dictation',
-            uuid=self._user_uuid,
-            apiKey=self._api_key,
-            applicationName=self._app,
+            uuid=user_uuid,
+            apiKey=api_key,
+            applicationName=app,
             device='desktop',
             coords='0, 0',
-            topic=self._topic,
-            lang=self._lang,
+            topic=topic,
+            lang=lang,
             format='audio/x-pcm;bit=16;rate=16000',
             punctuation=True,
-            disableAntimatNormalizer=self._disable_antimat,
+            disableAntimatNormalizer=disable_antimat,
             advancedASROptions=advanced_asr_options
         )
 
+    async def __upgrade_connection(self):
+        request = ('GET /asr_partial_checked HTTP/1.1\r\n'
+                   'User-Agent: {app}\r\n'
+                   'Host: {host}:{port}\r\n'
+                   'Upgrade: dictation\r\n\r\n'
+                   ).format(app=self._app, host=self._host, port=self._port).encode("utf-8")
+        self._logger.debug('Start a connection upgrade')
+
+        self._writer.write(request)
+        await self._writer.drain()
+
+        answer = await self._reader.readuntil(b'\r\n\r\n')
+        if not answer.decode('utf-8').startswith('HTTP/1.1 101 Switching Protocols'):
+            raise TransportError('Unable to upgrade connection')
+        self._logger.debug('The connection upgrade was successful')
+
+    async def __send_connection_request(self):
         self._logger.debug('Start a connection init')
-        await self.send(request)
+        await self.send(self._connection_request)
 
         orig_protobuf_types = self._protocol.protobuf_types
         self._protocol.protobuf_types = [ConnectionResponse]

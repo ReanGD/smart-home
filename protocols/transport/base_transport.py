@@ -11,7 +11,7 @@ class TransportError(RuntimeError):
         RuntimeError.__init__(self, message)
 
 
-class SerrializeProtocol(object):
+class SerrializeProtocol:
     def __init__(self, protobuf_types, logger):
         self._logger = logger
         self._protobuf_types = protobuf_types
@@ -24,14 +24,14 @@ class SerrializeProtocol(object):
     def protobuf_types(self, value):
         self._protobuf_types = value
 
-    async def send(self, writer, message):
+    async def send(self, _writer, _message):
         raise TransportError('Not implementation "send"')
 
-    async def recv(self, reader):
+    async def recv(self, _reader):
         raise TransportError('Not implementation "recv"')
 
 
-class TCPConnection(object):
+class TCPConnection:
     def __init__(self, logger):
         self._logger = logger
         self._reader = None
@@ -84,9 +84,9 @@ class TCPConnection(object):
             self._logger.error('The receiving cycle is stopped, not found handler "{}"'
                                .format(handler_name))
             raise TransportError('Not found handler "{}"'.format(handler_name))
-        except Exception as e:
-            self._logger.error('The receiving cycle is stopped by unknown exception %s', e)
-            raise e
+        except Exception as ex:
+            self._logger.error('The receiving cycle is stopped by unknown exception %s', ex)
+            raise ex
         finally:
             self._logger.info('Finished recv loop')
 
@@ -103,7 +103,7 @@ class TCPConnection(object):
                 reader, writer = await asyncio.open_connection(host, port, ssl=ssl)
                 self._logger.info('Connected to %s:%s', host, port)
                 await self.run(protocol, reader, writer)
-                return
+                break
             except ConnectionRefusedError as ex:
                 self._logger.error('Error connecting to %s:%d, message: %s', host, port, ex)
                 await asyncio.sleep(0.5)
@@ -156,9 +156,9 @@ class ServerConnection(asyncio.streams.FlowControlMixin):
             task = await self._connection.run(self._protocol, self._stream_reader, stream_writer)
             self._server.add_connection(self._connection)
             await task
-        except Exception as e:
-            self._logger.error('Unknown exception: %s', e)
-            raise e
+        except Exception as ex:
+            self._logger.error('Unknown exception: %s', ex)
+            raise ex
         finally:
             self._logger.info('Connect was closed')
 
@@ -188,7 +188,7 @@ class ServerConnection(asyncio.streams.FlowControlMixin):
         return True
 
 
-class TCPServer(object):
+class TCPServer:
     def __init__(self, logger):
         self._connections = set()
         self._logger = logger

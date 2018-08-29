@@ -37,5 +37,5 @@ class HASerrializeProtocol(SerrializeProtocol):
         message = proto_type()
         message.ParseFromString(package_bin[self._type_size:])
         self._logger.debug('Recv protobuf message "%s" (%d bytes)',
-                          message.DESCRIPTOR.name, package_size - self._type_size)
+                           message.DESCRIPTOR.name, package_size - self._type_size)
         return message
