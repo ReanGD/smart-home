@@ -1,5 +1,8 @@
 import re
 import asyncio
+from logging import Logger
+from typing import List, Callable
+from google.protobuf import message as gp_message
 
 
 LOWER_CASE_FIRST_RE = re.compile('(.)([A-Z][a-z]+)')
@@ -7,32 +10,32 @@ LOWER_CASE_SECOND_RE = re.compile('([a-z0-9])([A-Z])')
 
 
 class TransportError(RuntimeError):
-    def __init__(self, message):
+    def __init__(self, message: str):
         RuntimeError.__init__(self, message)
 
 
 class SerrializeProtocol:
-    def __init__(self, protobuf_types, logger):
+    def __init__(self, protobuf_types: List[object], logger):
         self._logger = logger
         self._protobuf_types = protobuf_types
 
     @property
-    def protobuf_types(self):
+    def protobuf_types(self) -> List[object]:
         return self._protobuf_types
 
     @protobuf_types.setter
-    def protobuf_types(self, value):
+    def protobuf_types(self, value: List[object]):
         self._protobuf_types = value
 
-    async def send(self, _writer, _message):
+    async def send(self, _writer: asyncio.streams.StreamWriter, _message: gp_message) -> None:
         raise TransportError('Not implementation "send"')
 
-    async def recv(self, _reader):
+    async def recv(self, _reader: asyncio.streams.StreamReader) -> gp_message:
         raise TransportError('Not implementation "recv"')
 
 
 class TCPConnection:
-    def __init__(self, logger):
+    def __init__(self, logger: Logger):
         self._logger = logger
         self._reader = None
         self._writer = None
@@ -40,24 +43,24 @@ class TCPConnection:
         self.__recv_loop_task = None
         self.__start_close = False
 
-    async def send(self, message):
+    async def send(self, message: gp_message) -> None:
         if self._writer is None:
             raise TransportError('Connection is not init')
 
         return await self._protocol.send(self._writer, message)
 
-    async def recv(self):
+    async def recv(self) -> gp_message:
         if self._reader is None:
             raise TransportError('Connection is not init')
 
         return await self._protocol.recv(self._reader)
 
-    async def on_connect(self):
+    async def on_connect(self) -> None:
         pass
 
     async def run(self, protocol: SerrializeProtocol,
                   reader: asyncio.streams.StreamReader,
-                  writer: asyncio.streams.StreamWriter):
+                  writer: asyncio.streams.StreamWriter) -> asyncio.Task:
         self._protocol = protocol
         self._reader = reader
         self._writer = writer
@@ -65,7 +68,7 @@ class TCPConnection:
         self.__recv_loop_task = asyncio.ensure_future(self.__recv_loop())
         return self.__recv_loop_task
 
-    async def __recv_loop(self):
+    async def __recv_loop(self) -> None:
         handler_name = ''
         try:
             self._logger.info('Recv loop started')
@@ -91,7 +94,7 @@ class TCPConnection:
             self._logger.info('Finished recv loop')
 
     async def connect(self, host: str, port: int, protocol: SerrializeProtocol,
-                      max_attempt: int = 5):
+                      max_attempt: int = 5) -> None:
         self._logger.info('Start connecting to %s:%d', host, port)
 
         ssl = (port == 443)
@@ -112,7 +115,7 @@ class TCPConnection:
             self._logger.critical(msg)
             raise TransportError(msg)
 
-    async def close(self):
+    async def close(self) -> None:
         if self.__start_close:
             self._logger.info('Double close')
             return
@@ -134,7 +137,11 @@ class TCPConnection:
 
 
 class ServerConnection(asyncio.streams.FlowControlMixin):
-    def __init__(self, server: 'TCPServer', handler_factory, protocol, logger):
+    def __init__(self,
+                 server: 'TCPServer',
+                 handler_factory: Callable[[Logger], TCPConnection],
+                 protocol: SerrializeProtocol,
+                 logger: Logger):
         super().__init__()
         self._server = server
         self._protocol = protocol
@@ -144,10 +151,10 @@ class ServerConnection(asyncio.streams.FlowControlMixin):
         self._connection = handler_factory(logger)
         self._over_ssl = False
 
-    def connection_made(self, transport):
+    def connection_made(self, transport) -> None:
         self._loop.create_task(self.on_accept(transport))
 
-    async def on_accept(self, transport):
+    async def on_accept(self, transport) -> None:
         self._logger.info('Accept connect')
         try:
             self._stream_reader.set_transport(transport)
@@ -162,7 +169,7 @@ class ServerConnection(asyncio.streams.FlowControlMixin):
         finally:
             self._logger.info('Connect was closed')
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Exception) -> None:
         self._logger.debug('Connection lost')
         if self._stream_reader is not None:
             if exc is None:
@@ -172,10 +179,10 @@ class ServerConnection(asyncio.streams.FlowControlMixin):
         super().connection_lost(exc)
         self._stream_reader = None
 
-    def data_received(self, data):
+    def data_received(self, data: bytes) -> None:
         self._stream_reader.feed_data(data)
 
-    def eof_received(self):
+    def eof_received(self) -> bool:
         self._server.remove_connection(self._connection)
         asyncio.ensure_future(self._connection.close())
         self._stream_reader = None
@@ -189,22 +196,24 @@ class ServerConnection(asyncio.streams.FlowControlMixin):
 
 
 class TCPServer:
-    def __init__(self, logger):
+    def __init__(self, logger: Logger):
         self._connections = set()
         self._logger = logger
         self._server_task = None
 
-    def add_connection(self, connection: TCPConnection):
+    def add_connection(self, connection: TCPConnection) -> None:
         self._connections.add(connection)
 
-    def remove_connection(self, connection: TCPConnection):
+    def remove_connection(self, connection: TCPConnection) -> None:
         self._connections.remove(connection)
 
-    async def send_to_all(self, message):
+    async def send_to_all(self, message: gp_message) -> None:
         tasks = [connection.send(message) for connection in self._connections]
         await asyncio.gather(*tasks)
 
-    async def run(self, host: str, port: int, handler_factory, protocol: SerrializeProtocol):
+    async def run(self, host: str, port: int,
+                  handler_factory: Callable[[Logger], TCPConnection],
+                  protocol: SerrializeProtocol) -> 'TCPServer':
         self._logger.info('Start server on %s:%d', host, port)
 
         def factory():
@@ -215,7 +224,7 @@ class TCPServer:
 
         return self
 
-    async def close(self):
+    async def close(self) -> None:
         self._logger.debug('Server close started')
         tasks = [connection.close() for connection in self._connections]
         await asyncio.gather(*tasks)
