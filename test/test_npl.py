@@ -12,7 +12,7 @@ class TestNPL(unittest.TestCase):
         ['Вруби люстру в зале',
          {'device_action': 'turn_on', 'device': 'light', 'place': 'livingroom'}],
         ['Выключи освещение в туалете',
-         {'device_action': 'turn_off', 'device': 'light', 'place': 'toilet'}],
+         {'device_action': 'turn_off', 'device': 'light', 'place': 'restroom'}],
         ['Выруби телевизор в спальне',
          {'device_action': 'turn_off', 'device': 'tv', 'place': 'livingroom'}],
         ['Включи пожалуйста колонку в детской',

@@ -27,7 +27,7 @@ message SetDeviceState
     Here = 1;
     Hall = 2;
     Kitchen = 3;
-    Toilet = 4;
+    Restroom = 4;
     Bathroom = 5;
     Livingroom = 6;
     Playroom = 7;
