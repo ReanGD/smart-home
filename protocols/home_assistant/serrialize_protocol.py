@@ -1,19 +1,22 @@
+import asyncio
 from hashlib import md5
+from typing import List
 from struct import pack, unpack
+from google.protobuf import message as gp_message
 from protocols.transport import TransportError, SerrializeProtocol
 
 
 class HASerrializeProtocol(SerrializeProtocol):
-    def __init__(self, protobuf_types, logger):
+    def __init__(self, protobuf_types: List[object], logger):
         super().__init__(protobuf_types, logger)
         self._type_size = md5().digest_size
         self._types_map = {HASerrializeProtocol._hash(it.__name__) : it for it in protobuf_types}
 
     @staticmethod
-    def _hash(message):
+    def _hash(message: str) -> bytes:
         return md5(message.encode('utf-8')).digest()
 
-    async def send(self, writer, message):
+    async def send(self, writer: asyncio.streams.StreamWriter, message: gp_message) -> None:
         message_bin = message.SerializeToString()
         message_name = message.DESCRIPTOR.name
 
@@ -23,7 +26,7 @@ class HASerrializeProtocol(SerrializeProtocol):
         writer.write(message_bin)
         await writer.drain()
 
-    async def recv(self, reader):
+    async def recv(self, reader: asyncio.streams.StreamReader) -> gp_message:
         package_size_bin = await reader.readexactly(4)
         package_size = unpack('>I', package_size_bin)[0]
         package_bin = await reader.readexactly(package_size)

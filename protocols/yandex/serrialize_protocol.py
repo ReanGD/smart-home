@@ -1,10 +1,13 @@
+import asyncio
+from logging import Logger
+from google.protobuf import message as gp_message
 from protocols.transport import TransportError, SerrializeProtocol, TCPConnection
 from .basic_pb2 import ConnectionResponse
 from .voiceproxy_pb2 import AdvancedASROptions, ConnectionRequest, AddData
 
 
 class YandexSerrializeProtocol(SerrializeProtocol):
-    async def send(self, writer, message):
+    async def send(self, writer: asyncio.streams.StreamWriter, message: gp_message) -> None:
         message_bin = message.SerializeToString()
         message_len = len(message_bin)
         message_name = message.DESCRIPTOR.name
@@ -15,7 +18,7 @@ class YandexSerrializeProtocol(SerrializeProtocol):
         writer.write(message_bin)
         await writer.drain()
 
-    async def recv(self, reader):
+    async def recv(self, reader: asyncio.streams.StreamReader) -> gp_message:
         # pylint: disable=broad-except
         package_size_bin = await reader.readuntil(b'\r\n')
         package_size = int(b'0x' + package_size_bin[:-2], 0)
@@ -36,7 +39,8 @@ class YandexSerrializeProtocol(SerrializeProtocol):
 
 
 class YandexClient(TCPConnection):
-    def __init__(self, logger, app, host, port, user_uuid, api_key, topic, lang, disable_antimat):
+    def __init__(self, logger: Logger, app: str, host: str, port: int, user_uuid: str,
+                 api_key: str, topic: str, lang: str, disable_antimat: bool):
         # pylint: disable=too-many-arguments
         super().__init__(logger)
         self._app = app
@@ -80,7 +84,7 @@ class YandexClient(TCPConnection):
             advancedASROptions=advanced_asr_options
         )
 
-    async def __upgrade_connection(self):
+    async def __upgrade_connection(self) -> None:
         request = ('GET /asr_partial_checked HTTP/1.1\r\n'
                    'User-Agent: {app}\r\n'
                    'Host: {host}:{port}\r\n'
@@ -96,7 +100,7 @@ class YandexClient(TCPConnection):
             raise TransportError('Unable to upgrade connection')
         self._logger.debug('The connection upgrade was successful')
 
-    async def __send_connection_request(self):
+    async def __send_connection_request(self) -> None:
         self._logger.debug('Start a connection init')
         await self.send(self._connection_request)
 
@@ -110,17 +114,17 @@ class YandexClient(TCPConnection):
         self._logger.debug('The connection init was successful')
 
     @staticmethod
-    def error_from_response(response, text):
+    def error_from_response(response: gp_message, text: str) -> TransportError:
         error_text = '{}, status_code={}'.format(text, response.responseCode)
         if response.HasField("message"):
             error_text += ', message is "{}"'.format(response.message)
         return TransportError(error_text)
 
-    async def on_connect(self):
+    async def on_connect(self) -> None:
         await self.__upgrade_connection()
         await self.__send_connection_request()
 
-    async def send_audio_data(self, data):
+    async def send_audio_data(self, data: bytes) -> None:
         if data is None:
             self._logger.debug('Start send finished audio data chank')
             await self.send(AddData(lastChunk=True))

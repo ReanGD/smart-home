@@ -1,3 +1,4 @@
+from typing import List
 from .protocol_pb2 import SetDeviceState
 
 
@@ -84,7 +85,7 @@ def entity_to_protobuf(category: str, value: str) -> int:
     return result
 
 
-def protobuf_to_device_id(device: int, place: int, action: int):
+def protobuf_to_device_id(device: int, place: int, action: int) -> List[str]:
     if device != SetDeviceState.Light:
         raise RuntimeError('Unsupported id: device={}, place={}, action={}'.format(
             device, place, action))
