@@ -1,0 +1,90 @@
+media_player.sonos_black:
+  config_entry_id: 231500858c3c4ad8bff2753c9a0c984f
+  name:
+  platform: sonos
+  unique_id: RINCON_7828CAA1C4A401400
+switch.kitchen_left_switch_ceiling_light:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: channel_0158d0001f5795b
+switch.kitchen_right_switch_backlight:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: channel_1158d0001f5795b
+switch.restroom_switch_ceiling_light:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: channel_0158d000183b52d
+binary_sensor.restroom_motion_sensor1:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: status158d0001d92656
+sensor.restroom_illumination1:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: illumination34ce009098a0
+switch.bathroom_switch_right_ceiling_light:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: channel_1158d0001dbe3cc
+switch.bathroom_switch_left_additional_light:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: channel_0158d0001dbe3cc
+switch.livingroom_switch_ceiling_light:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: channel_0158d0001e6b3bf
+binary_sensor.livingroom_button_bedside_my:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: status158d0001e00fa5
+binary_sensor.livingroom_button_bedside_wife:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: status158d0001e6514b
+switch.hall_switch_right_ceiling_light:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: channel_1158d0001f3f9f6
+switch.hall_switch_left_special:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: channel_0158d0001f3f9f6
+switch.playroom_switch_ceiling_light:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: channel_0158d0001a3ed13
+sensor.serverroom_sensor_humidity:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: humidity158d0001b8cc0c
+sensor.serverroom_sensor_temperature:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: temperature158d0001b8cc0c
+binary_sensor.magic_cube:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: cube158d00024a4c61
+light.gateway_backlight:
+  config_entry_id:
+  name:
+  platform: xiaomi_aqara
+  unique_id: rgb34ce009098a0

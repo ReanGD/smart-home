@@ -9,9 +9,14 @@ venv/
 
 # tmp data
 *.wav
+*.db
+*.log
 samples/
 samples_out/
 pocketsphinx/
 
 #proto
 **/*_pb2.py
+
+#home assistant
+etc/homeassistant/tts/*
