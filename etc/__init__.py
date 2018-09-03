@@ -1,4 +1,4 @@
-from .npl_entities import all_entitis
+from .nlp_entities import all_entitis
 
 
 __all__ = [

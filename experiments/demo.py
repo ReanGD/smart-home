@@ -1,6 +1,6 @@
 import config
 import asyncio
-from npl import Morphology
+from nlp import Morphology
 from etc import all_entitis
 from logging import getLogger
 from audio import StreamSettings, Microphone

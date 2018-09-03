@@ -1,9 +1,9 @@
 import unittest
-from npl import Morphology
+from nlp import Morphology
 from etc import all_entitis
 
 
-class TestNPL(unittest.TestCase):
+class TestNLP(unittest.TestCase):
     phrases = [
         ['Включи свет в коридоре',
          {'device_action': 'turn_on', 'device': 'light', 'place': 'hall'}],
@@ -48,8 +48,8 @@ class TestNPL(unittest.TestCase):
     def setUp(self):
         self.morph = Morphology(all_entitis)
 
-    def test_npl(self):
-        for phrase, expect in TestNPL.phrases:
+    def test_nlp(self):
+        for phrase, expect in TestNLP.phrases:
             result = self.morph.analyze(phrase)
             if 'unknown' in result:
                 del result['unknown']
