@@ -1,0 +1,84 @@
+homeassistant:
+  # Name of the location where Home Assistant is running
+  name: Home
+  latitude: !secret latitude_value
+  longitude: !secret longitude_value
+  # Impacts weather/sunrise data (altitude above sea level in meters)
+  elevation: 30
+  unit_system: metric
+  time_zone: Europe/Moscow
+  customize: !include customize.yaml
+
+tts:
+  - platform: yandextts
+    api_key: !secret tts_yandex_api_key
+    language: 'ru-RU'
+    voice: 'alyss'
+    emotion: 'neutral'
+    speed: 1
+
+xiaomi_aqara:
+  discovery_retry: 5
+  gateways:
+    - mac: !secret xiaomi_aqara_mac
+      key: !secret xiaomi_aqara_key
+
+light:
+  - platform: xiaomi_miio
+    name: livingroom_philips_smart_lamp
+    host: 192.168.1.101
+    token: !secret xiaomi_miio_token
+    model: philips.light.ceiling
+
+# voice_commands:
+#   qwe: 'qwe'
+  # activate_url: http://192.168.1.50:8888/activate
+  # activate_timeout: 10
+
+updater:
+  include_used_components: true
+
+# Show links to resources in log and frontend
+# introduction:
+
+group: !include groups.yaml
+automation: !include automations.yaml
+
+# Enables the frontend
+frontend:
+
+# Enables configuration UI
+config:
+
+http:
+  # Secrets are defined in the file secrets.yaml
+  # api_password: !secret http_password
+  # Uncomment this if you are using SSL/TLS, running in Docker container, etc.
+  # base_url: example.duckdns.org:8123
+
+# Discover some devices automatically
+discovery:
+
+# Allows you to issue voice commands from the frontend in enabled browsers
+conversation:
+
+# Enables support for tracking state changes over time
+history:
+
+# View all events in a logbook
+logbook:
+
+# Enables a map showing the location of tracked devices
+map:
+
+# Track the sun
+sun:
+
+# Weather prediction
+sensor:
+  - platform: yr
+
+# Cloud
+cloud:
+
+script: !include scripts.yaml
