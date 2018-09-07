@@ -4,7 +4,7 @@ from nlp import Morphology
 from etc import all_entitis
 from logging import getLogger
 from audio import StreamSettings, Microphone
-from protocols.transport import TCPConnection, create_client
+from protocols.transport import TCPClientConnection, create_client
 from protocols.home_assistant import (HASerrializeProtocol, StartRecognition, SetDeviceState,
                                       entity_to_protobuf)
 
@@ -16,10 +16,10 @@ class HomeAssistentHandler(object):
     def __init__(self, event):
         self._event = event
 
-    async def on_connect(self, conn: TCPConnection):
+    async def on_connect(self, conn: TCPClientConnection):
         pass
 
-    async def on_start_recognition(self, conn: TCPConnection, message: StartRecognition):
+    async def on_start_recognition(self, conn: TCPClientConnection, message: StartRecognition):
         self._event.set()
 
 

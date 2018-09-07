@@ -1,8 +1,11 @@
-from .base_transport import TransportError, SerrializeProtocol, TCPConnection, TCPServer
+from .base_transport import TransportError, SerrializeProtocol
+from .server import TCPServer, TCPServerConnection
+from .client import TCPClientConnection
 
 __all__ = [
     'TransportError',
     'SerrializeProtocol',
-    'TCPConnection',
     'TCPServer',
+    'TCPServerConnection',
+    'TCPClientConnection',
 ]

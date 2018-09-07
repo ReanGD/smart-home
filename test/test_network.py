@@ -2,7 +2,7 @@ import unittest
 import asyncio
 from test.test_proto import *
 from protocols.home_assistant import HASerrializeProtocol
-from protocols.transport import TCPConnection, TCPServer
+from protocols.transport import TCPClientConnection, TCPServerConnection, TCPServer
 
 import logging
 from sys import stdout
@@ -12,7 +12,30 @@ log_handler = logging.StreamHandler(stdout)
 log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
 
 
-class TestConnection(TCPConnection):
+class TestServerConnection(TCPServerConnection):
+    def __init__(self, logger, event: asyncio.Event):
+        super().__init__(logger)
+        self.event = event
+        self.recv_messages = []
+
+    async def on_test_message1(self, message: TestMessage1):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        await self.send(TestMessage1Result(text=message.DESCRIPTOR.name + 'Response'))
+
+    async def on_test_message1_result(self, message: TestMessage1Result):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        await self.send(TestMessage2(text=message.DESCRIPTOR.name + 'Request'))
+
+    async def on_test_message2(self, message: TestMessage2):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        await self.send(TestMessage2Result(text=message.DESCRIPTOR.name + 'Response'))
+
+    async def on_test_message2_result(self, message: TestMessage2Result):
+        self.recv_messages.append((message.DESCRIPTOR.name, message.text))
+        self.event.set()
+
+
+class TestClientConnection(TCPClientConnection):
     def __init__(self, logger, event: asyncio.Event):
         super().__init__(logger)
         self.event = event
@@ -56,11 +79,11 @@ class TestNetwork(unittest.TestCase):
         server = TCPServer(self.get_logger('server'))
 
         def handler_factory(logger):
-            return TestConnection(logger, self.finish_event)
+            return TestServerConnection(logger, self.finish_event)
         return await server.run(self.host, self.port, handler_factory, self.server_protocol)
 
     async def create_client(self):
-        client = TestConnection(self.get_logger('client'), self.finish_event)
+        client = TestClientConnection(self.get_logger('client'), self.finish_event)
         await client.connect(self.host, self.port, self.client_protocol)
         return client
 

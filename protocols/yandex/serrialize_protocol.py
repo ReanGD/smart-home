@@ -1,7 +1,7 @@
 import asyncio
 from logging import Logger
 from google.protobuf import message as gp_message
-from protocols.transport import TransportError, SerrializeProtocol, TCPConnection
+from protocols.transport import TransportError, SerrializeProtocol, TCPClientConnection
 from .basic_pb2 import ConnectionResponse
 from .voiceproxy_pb2 import AdvancedASROptions, ConnectionRequest, AddData
 
@@ -38,7 +38,7 @@ class YandexSerrializeProtocol(SerrializeProtocol):
         raise TransportError('Recv unknown protobuf message')
 
 
-class YandexClient(TCPConnection):
+class YandexClient(TCPClientConnection):
     def __init__(self, logger: Logger, app: str, host: str, port: int, user_uuid: str,
                  api_key: str, topic: str, lang: str, disable_antimat: bool):
         # pylint: disable=too-many-arguments
