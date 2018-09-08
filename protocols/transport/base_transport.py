@@ -46,17 +46,17 @@ class ConnectionState(Enum):
     UNINITIALIZED = 0
     RUNNING = 1
     LOST_CONNECTION = 2
+    CLOSING = 3
 
 
 class TCPConnection:
     def __init__(self, logger: Logger):
         self._logger = logger
-        self._reader = None
-        self._writer = None
+        self._reader: asyncio.streams.StreamReader = None
+        self._writer: asyncio.streams.StreamWriter = None
         self._protocol = None
         self.__recv_loop_task = None
-        self.__start_close = False
-        self.__state: ConnectionState = ConnectionState.UNINITIALIZED
+        self.__state = ConnectionState.UNINITIALIZED
 
     @property
     def state(self) -> ConnectionState:
@@ -68,11 +68,14 @@ class TCPConnection:
 
     def __check_state(self) -> None:
         if self.__state == ConnectionState.LOST_CONNECTION:
-            msg = 'TCPConnection has incorrect invalid status {}'.format(self.__state.name)
+            msg = 'TCPConnection has incorrect state {}'.format(self.__state.name)
             raise LostConnection(TransportError(msg))
 
+        if self.__state == ConnectionState.CLOSING:
+            raise TransportError('The connection is closing')
+
         if self.__state != ConnectionState.RUNNING:
-            msg = 'TCPConnection has incorrect invalid status {}'.format(self.__state.name)
+            msg = 'TCPConnection has incorrect state {}'.format(self.__state.name)
             raise TransportError(msg)
 
     async def send(self, message: gp_message) -> None:
@@ -90,19 +93,14 @@ class TCPConnection:
 
         try:
             return await self._protocol.recv(self._reader)
-        except asyncio.IncompleteReadError as ex:
-            await self.__on_lost_connection()
-            self._writer.close()
-            self._writer = None
-            raise LostConnection(ex)
-        except BrokenPipeError as ex:
+        except (asyncio.IncompleteReadError, BrokenPipeError) as ex:
             await self.__on_lost_connection()
             self._writer.close()
             self._writer = None
             raise LostConnection(ex)
 
     async def __on_lost_connection(self) -> None:
-        if self.__state == ConnectionState.LOST_CONNECTION or self.__start_close:
+        if self.__state in [ConnectionState.LOST_CONNECTION, ConnectionState.CLOSING]:
             return
 
         self.__change_state(ConnectionState.LOST_CONNECTION)
@@ -111,6 +109,7 @@ class TCPConnection:
     async def __on_lost_connection_wrap(self) -> None:
         if self.__recv_loop_task is not None:
             await asyncio.wait([self.__recv_loop_task])
+            self.__recv_loop_task = None
 
         await self.on_lost_connection()
 
@@ -158,15 +157,16 @@ class TCPConnection:
             self._logger.info('Finished recv loop')
 
     async def close(self) -> None:
-        # TODO: replace to state
-        if self.__start_close:
-            self._logger.info('Double close')
+        if self.__state == ConnectionState.CLOSING:
+            self._logger.warning('Double close')
             return
 
+        # TODO: check reconnect
         self._logger.debug('Connection close started')
-        self.__start_close = True
+        self.__change_state(ConnectionState.CLOSING)
         if self.__recv_loop_task is not None:
-            self._reader.feed_eof()
+            if self._reader is not None:
+                self._reader.feed_eof()
             await asyncio.wait([self.__recv_loop_task])
             self.__recv_loop_task = None
 
