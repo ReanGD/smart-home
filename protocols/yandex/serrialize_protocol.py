@@ -12,11 +12,20 @@ class YandexSerrializeProtocol(SerrializeProtocol):
         message_len = len(message_bin)
         message_name = message.DESCRIPTOR.name
 
-        self._logger.debug('Send protobuf message "%s" (%d bytes)', message_name, message_len)
-        writer.write(hex(message_len)[2:].encode('utf-8'))
-        writer.write(b'\r\n')
-        writer.write(message_bin)
-        await writer.drain()
+        try:
+            self._logger.debug('Send protobuf message "%s" (%d bytes)', message_name, message_len)
+            writer.write(hex(message_len)[2:].encode('utf-8'))
+            writer.write(b'\r\n')
+            writer.write(message_bin)
+            await writer.drain()
+        except ConnectionResetError:
+            msg = 'Send protobuf message "%s" (%d bytes) finished with error: Connection lost'
+            self._logger.error(msg, message_name, message_len)
+            raise
+        except Exception as ex:
+            msg = 'Send protobuf message "%s" (%d bytes) finished with error: (%s): %s'
+            self._logger.error(msg, message_name, message_len, type(ex), ex)
+            raise
 
     async def recv(self, reader: asyncio.streams.StreamReader) -> gp_message:
         # pylint: disable=broad-except
