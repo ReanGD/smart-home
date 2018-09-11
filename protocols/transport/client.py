@@ -1,15 +1,28 @@
 import asyncio
-from .base_transport import SerrializeProtocol, TCPConnection, TransportError
+from logging import Logger
+from .base_transport import SerrializeProtocol, TCPConnection, TransportError, ConnectionState
 
 
 class TCPClientConnection(TCPConnection):
+    def __init__(self, logger: Logger):
+        super().__init__(logger)
+        self.__host: str = None
+        self.__port: int = None
+        self.__max_attempt: int = None
+
     async def connect(self, host: str, port: int, protocol: SerrializeProtocol,
                       max_attempt: int = 5) -> None:
         self._logger.info('Start connecting to %s:%d', host, port)
 
+        self.__host = host
+        self.__port = port
+        self.__max_attempt = max_attempt
         ssl = (port == 443)
         for attempt in range(max_attempt):
             try:
+                if self.state == ConnectionState.CLOSING:
+                    self._logger.info('Connection is stopped because the transport is closed')
+                    return
                 if attempt != 0:
                     self._logger.info('Connection attempt %d', attempt + 1)
 
@@ -24,3 +37,10 @@ class TCPClientConnection(TCPConnection):
             msg = 'Сould not connect to {}:{}'.format(host, port)
             self._logger.critical(msg)
             raise TransportError(msg)
+
+    async def on_lost_connection(self) -> None:
+        assert self.__host is not None, 'Host not set'
+        assert self.__port is not None, 'Port not set'
+        assert self._protocol is not None, 'Protocol not set'
+        assert self.__max_attempt is not None, 'Max attempt not set'
+        await self.connect(self.__host, self.__port, self._protocol, self.__max_attempt)
