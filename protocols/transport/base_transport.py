@@ -15,6 +15,10 @@ class TransportError(RuntimeError):
         super().__init__(message)
 
 
+class StateError(TransportError):
+    pass
+
+
 class LostConnection(RuntimeError):
     def __init__(self, ex: Exception):
         super().__init__('Lost connection')
@@ -67,22 +71,19 @@ class TCPConnection:
         self._logger.debug("Change state from %s to %s", self.__state.name, value.name)
         self.__state = value
 
-    def __check_state(self) -> None:
-        if self.__state == ConnectionState.LOST_CONNECTION:
-            msg = 'TCPConnection has incorrect state {}'.format(self.__state.name)
-            raise LostConnection(TransportError(msg))
-
-        if self.__state == ConnectionState.CLOSING:
-            raise TransportError('Connection closed')
-
-        if self.__state != ConnectionState.RUNNING:
-            msg = 'TCPConnection has incorrect state {}'.format(self.__state.name)
-            raise TransportError(msg)
-
     async def send(self, message: gp_message) -> None:
         try:
             await self.__writer_lock.acquire()
-            self.__check_state()
+
+            if self.__state == ConnectionState.LOST_CONNECTION:
+                raise LostConnection(StateError('Failed to send message, lost connection'))
+
+            if self.__state == ConnectionState.CLOSING:
+                raise StateError('Failed to send message, connection closed')
+
+            if self.__state != ConnectionState.RUNNING:
+                msg = 'Failed to send message, incorrect state: {}'.format(self.__state.name)
+                raise StateError(msg)
 
             try:
                 return await self._protocol.send(self._writer, message)
@@ -95,13 +96,28 @@ class TCPConnection:
     async def recv(self) -> gp_message:
         try:
             await self.__reader_lock.acquire()
-            self.__check_state()
+
+            if self.__state == ConnectionState.LOST_CONNECTION:
+                raise LostConnection(StateError('Stopped receiving, lost connection'))
+
+            if self.__state == ConnectionState.CLOSING:
+                raise StateError('Stopped receiving, connection closed')
+
+            if self.__state != ConnectionState.RUNNING:
+                msg = 'Stopped receiving, incorrect state: {}'.format(self.__state.name)
+                raise StateError(msg)
 
             try:
                 return await self._protocol.recv(self._reader)
             except (asyncio.IncompleteReadError, BrokenPipeError) as ex:
                 asyncio.ensure_future(self.__on_lost_connection())
+                self._logger.error('Stopped receiving, lost connection: <%s> %s', type(ex), ex)
                 raise LostConnection(ex)
+            except TransportError:
+                raise
+            except Exception as ex:
+                self._logger.error('Stopped receiving, unknown exception: <%s> %s', type(ex), ex)
+                raise
         finally:
             self.__reader_lock.release()
 
@@ -129,27 +145,46 @@ class TCPConnection:
         return self.__recv_loop_task
 
     async def __recv_loop(self) -> None:
-        handler_name = ''
         try:
             self._logger.info('Recv loop started')
-            while self.__state == ConnectionState.RUNNING:
-                message = await self.recv()
+            handler_name = ''
+            message = None
+            while True:
+                if self.__state != ConnectionState.RUNNING:
+                    self._logger.error('The receiving cycle is stopped, incorrect state: %s',
+                                       self.__state.name)
+                    break
 
-                handler_name = LOWER_CASE_FIRST_RE.sub(r'\1_\2', message.DESCRIPTOR.name)
-                handler_name = 'on_' + LOWER_CASE_SECOND_RE.sub(r'\1_\2', handler_name).lower()
-                handler = getattr(self, handler_name)
-                await handler(message)
-        except LostConnection as ex:
-            msg = 'The receiving cycle is stopped by lost connection, origin exception (%s) %s'
-            self._logger.error(msg, type(ex.exception), ex.exception)
-        except AttributeError:
-            self._logger.error('The receiving cycle is stopped, not found handler "{}"'
-                               .format(handler_name))
-            raise TransportError('Not found handler "{}"'.format(handler_name))
-        except Exception as ex:
-            self._logger.error('The receiving cycle is stopped by unknown exception (%s) %s',
-                               type(ex), ex)
-            raise ex
+                try:
+                    message = await self.recv()
+                except LostConnection as ex:
+                    ex = ex.exception
+                    self._logger.error(('The receiving cycle is stopped by lost connection, '
+                                        'origin exception: <%s> %s'), type(ex), ex)
+                    break
+                except StateError as ex:
+                    self._logger.error('The receiving cycle is stopped by state error: %s ', ex)
+                    break
+                except TransportError:
+                    pass
+                except Exception as ex:
+                    msg = 'The receiving cycle is stopped by unknown exception in recv: <%s> %s'
+                    self._logger.error(msg, type(ex), ex)
+                    raise
+
+                try:
+                    handler_name = LOWER_CASE_FIRST_RE.sub(r'\1_\2', message.DESCRIPTOR.name)
+                    handler_name = 'on_' + LOWER_CASE_SECOND_RE.sub(r'\1_\2', handler_name).lower()
+                    handler = getattr(self, handler_name)
+                    await handler(message)
+                except AttributeError:
+                    self._logger.error('The receiving cycle is stopped, not found handler "{}"'
+                                       .format(handler_name))
+                    raise TransportError('Not found handler "{}"'.format(handler_name))
+                except Exception as ex:
+                    self._logger.error(('The receiving cycle is stopped by unknown exception '
+                                        'in handler (%s): <%s> %s'), handler_name, type(ex), ex)
+                    raise
         finally:
             self._logger.info('Finished recv loop')
 

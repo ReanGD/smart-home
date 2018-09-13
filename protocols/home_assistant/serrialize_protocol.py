@@ -32,7 +32,7 @@ class HASerrializeProtocol(SerrializeProtocol):
             self._logger.error(msg, message_name, message_len)
             raise
         except Exception as ex:
-            msg = 'Send protobuf message "%s" (%d bytes) finished with error: (%s): %s'
+            msg = 'Send protobuf message "%s" (%d bytes) finished with error: <%s> %s'
             self._logger.error(msg, message_name, message_len, type(ex), ex)
             raise
 
