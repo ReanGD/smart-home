@@ -110,8 +110,8 @@ class TCPConnection:
             try:
                 return await self._protocol.recv(self._reader)
             except (asyncio.IncompleteReadError, BrokenPipeError) as ex:
-                asyncio.ensure_future(self.__on_lost_connection())
                 self._logger.error('Stopped receiving, lost connection: <%s> %s', type(ex), ex)
+                asyncio.ensure_future(self.__on_lost_connection())
                 raise LostConnection(ex)
             except TransportError:
                 raise
@@ -139,8 +139,24 @@ class TCPConnection:
         self._reader = reader
         self._writer = writer
         self.__change_state(ConnectionState.RUNNING)
-        # TODO: process exception
-        await self.on_connect()
+
+        try:
+            await self.on_connect()
+        except LostConnection as ex:
+            ex = ex.exception
+            self._logger.error(('Handler "on_connect" is stopped by lost connection, '
+                                'origin exception: <%s> %s'), type(ex), ex)
+            asyncio.ensure_future(self.__on_lost_connection())
+            raise
+        except StateError as ex:
+            self._logger.error('Handler "on_connect" is stopped by state error: %s', ex)
+            # TODO: fix me
+            return None
+        except Exception as ex:
+            self._logger.error('Handler "on_connect" is stopped by unknown exception: <%s> %s',
+                               type(ex), ex)
+            raise
+
         self.__recv_loop_task = asyncio.ensure_future(self.__recv_loop())
         return self.__recv_loop_task
 
