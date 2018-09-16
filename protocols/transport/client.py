@@ -11,20 +11,22 @@ class TCPClientConnection(TCPConnection):
         self.__max_attempt: int = None
 
     async def connect(self, host: str, port: int, protocol: SerrializeProtocol,
-                      max_attempt: int = 5) -> None:
+                      max_attempt: int = -1) -> None:
         self._logger.info('Start connecting to %s:%d', host, port)
 
         self.__host = host
         self.__port = port
         self.__max_attempt = max_attempt
         ssl = (port == 443)
-        for attempt in range(max_attempt):
+        attempt = 1
+        while attempt <= max_attempt or max_attempt == -1:
             try:
                 if self.state == ConnectionState.CLOSING:
                     self._logger.info('Connection is stopped because the transport is closed')
-                    return
-                if attempt != 0:
-                    self._logger.info('Connection attempt %d', attempt + 1)
+                    break
+
+                if attempt != 1:
+                    self._logger.info('Connection attempt %d', attempt)
 
                 reader, writer = await asyncio.open_connection(host, port, ssl=ssl)
                 self._logger.info('Connected to %s:%s', host, port)
@@ -32,11 +34,16 @@ class TCPClientConnection(TCPConnection):
                 break
             except ConnectionRefusedError as ex:
                 self._logger.error('Error connecting to %s:%d, message: %s', host, port, ex)
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(min(0.1 * attempt, 30))
+                attempt += 1
         else:
             msg = 'Сould not connect to {}:{}'.format(host, port)
             self._logger.critical(msg)
             raise TransportError(msg)
+
+    async def wait_reconnect_finished(self):
+        while self.state not in [ConnectionState.RUNNING, ConnectionState.CLOSING]:
+            await asyncio.sleep(0.1)
 
     async def on_lost_connection(self) -> None:
         assert self.__host is not None, 'Host not set'

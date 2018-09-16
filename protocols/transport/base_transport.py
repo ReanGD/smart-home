@@ -47,6 +47,7 @@ class SerrializeProtocol:
 
 class ConnectionState(Enum):
     UNINITIALIZED = auto()
+    INITIALIZATION = auto()
     RUNNING = auto()
     LOST_CONNECTION = auto()
     CLOSING = auto()
@@ -81,7 +82,7 @@ class TCPConnection:
             if self.__state == ConnectionState.CLOSING:
                 raise StateError('Failed to send message, connection closed')
 
-            if self.__state != ConnectionState.RUNNING:
+            if self.__state not in [ConnectionState.INITIALIZATION, ConnectionState.RUNNING]:
                 msg = 'Failed to send message, incorrect state: {}'.format(self.__state.name)
                 raise StateError(msg)
 
@@ -103,7 +104,7 @@ class TCPConnection:
             if self.__state == ConnectionState.CLOSING:
                 raise StateError('Stopped receiving, connection closed')
 
-            if self.__state != ConnectionState.RUNNING:
+            if self.__state not in [ConnectionState.INITIALIZATION, ConnectionState.RUNNING]:
                 msg = 'Stopped receiving, incorrect state: {}'.format(self.__state.name)
                 raise StateError(msg)
 
@@ -138,7 +139,7 @@ class TCPConnection:
         self._protocol = protocol
         self._reader = reader
         self._writer = writer
-        self.__change_state(ConnectionState.RUNNING)
+        self.__change_state(ConnectionState.INITIALIZATION)
 
         try:
             await self.on_connect()
@@ -165,6 +166,7 @@ class TCPConnection:
             self._logger.info('Recv loop started')
             handler_name = ''
             message = None
+            self.__change_state(ConnectionState.RUNNING)
             while True:
                 if self.__state != ConnectionState.RUNNING:
                     self._logger.error('The receiving cycle is stopped, incorrect state: %s',
