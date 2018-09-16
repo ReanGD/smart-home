@@ -21,8 +21,7 @@ class HASerrializeProtocol(SerrializeProtocol):
         message_len = len(message_bin)
         message_name = message.DESCRIPTOR.name
         try:
-            self._logger.debug('Send protobuf message "%s" (%d bytes)',
-                               message_name, message_len)
+            self._logger.debug('Send protobuf message "%s" (%d bytes)', message_name, message_len)
             writer.write(pack('>I', message_len + self._type_size))
             writer.write(HASerrializeProtocol._hash(message_name))
             writer.write(message_bin)

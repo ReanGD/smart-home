@@ -11,8 +11,7 @@ LOWER_CASE_SECOND_RE = re.compile('([a-z0-9])([A-Z])')
 
 
 class TransportError(RuntimeError):
-    def __init__(self, message: str):
-        super().__init__(message)
+    pass
 
 
 class StateError(TransportError):
@@ -151,8 +150,7 @@ class TCPConnection:
             raise
         except StateError as ex:
             self._logger.error('Handler "on_connect" is stopped by state error: %s', ex)
-            # TODO: fix me
-            return None
+            raise
         except Exception as ex:
             self._logger.error('Handler "on_connect" is stopped by unknown exception: <%s> %s',
                                type(ex), ex)
