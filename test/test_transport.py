@@ -58,7 +58,7 @@ class TestClientConnection(TCPClientConnection):
         self.event.set()
 
 
-class TestNetwork(unittest.TestCase):
+class TestTransport(unittest.TestCase):
     def setUp(self):
         self.host = '127.0.0.1'
         self.port = 8888
