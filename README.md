@@ -61,3 +61,10 @@ other
 ```bash
 pip3 install pysoundcard SpeechRecognition
 ```
+
+for test
+--------
+
+```bash
+pip3 install pytest-asyncio
+```
