@@ -43,7 +43,7 @@ class TCPClientConnection(TCPConnection):
 
     async def wait_reconnect_finished(self):
         while self.state not in [ConnectionState.RUNNING, ConnectionState.CLOSING]:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.01)
 
     async def on_lost_connection(self) -> None:
         assert self.__host is not None, 'Host not set'

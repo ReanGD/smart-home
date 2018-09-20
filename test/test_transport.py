@@ -3,7 +3,8 @@ import asyncio
 import logging
 from test.test_proto import *
 from protocols.home_assistant import HASerrializeProtocol
-from protocols.transport import TCPClientConnection, TCPServerConnection, TCPServer
+from protocols.transport import (TCPClientConnection, TCPServerConnection, TCPServer,
+                                 TransportError, LostConnection, ConnectionState)
 
 
 pytestmark = pytest.mark.asyncio
@@ -78,29 +79,63 @@ class TestTransport:
             return ServerConnection(logger, self.finish_event)
         return await server.run(self.host, self.port, handler_factory, self.server_protocol)
 
-    async def create_client(self):
+    async def create_client(self, max_attempt: int=-1):
         client = ClientConnection(self.get_logger('client'), self.finish_event)
-        await client.connect(self.host, self.port, self.client_protocol)
+        await client.connect(self.host, self.port, self.client_protocol, max_attempt)
         return client
 
-    async def test_client_send(self):
+    async def create_pair(self):
         server = await self.create_server()
         client = await self.create_client()
+        return server, client
 
-        await client.send(Message1(text='Request'))
-
+    async def close(self, server, client):
         await self.finish_event.wait()
+        await asyncio.gather(client.close(), server.close())
+
+    async def test_client_send(self):
+        server, client = await self.create_pair()
+        await client.send(Message1(text='Request'))
+        await self.finish_event.wait()
+        assert server.connection_count() == 1
         await client.close()
-        await asyncio.sleep(0.1)
+        while server.connection_count() != 0:
+            await asyncio.sleep(0.01)
         await server.close()
 
     async def test_server_send(self):
-        server = await self.create_server()
-        client = await self.create_client()
-
+        server, client = await self.create_pair()
         await server.send_to_all(Message1(text='Request'))
+        await self.close(server, client)
 
-        await self.finish_event.wait()
-        await client.close()
-        await asyncio.sleep(0.1)
+    async def test_client_send_reconnect(self):
+        server, client = await self.create_pair()
+
         await server.close()
+        with pytest.raises(LostConnection):
+            await client.send(Message1(text='Request'))
+
+        server = await self.create_server()
+        await client.wait_reconnect_finished()
+        await client.send(Message1(text='Request'))
+        await self.close(server, client)
+
+    async def test_client_recv_reconnect(self):
+        server, client = await self.create_pair()
+
+        await client.send(Message1(text='Request'))
+        await self.finish_event.wait()
+        self.finish_event.clear()
+
+        await server.close()
+        while client.state != ConnectionState.LOST_CONNECTION:
+            await asyncio.sleep(0.01)
+        server = await self.create_server()
+        await client.wait_reconnect_finished()
+
+        await client.send(Message1(text='Request'))
+        await self.close(server, client)
+
+    async def test_connect_to_down_server(self):
+        with pytest.raises(TransportError):
+            await self.create_client(2)

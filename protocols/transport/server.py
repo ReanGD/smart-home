@@ -22,6 +22,9 @@ class TCPServer:
         tasks = [connection.send(message) for connection in self._connections]
         await asyncio.gather(*tasks)
 
+    def connection_count(self) -> int:
+        return len(self._connections)
+
     async def __handle_connection(self,
                                   reader: asyncio.streams.StreamReader,
                                   writer: asyncio.streams.StreamWriter) -> None:

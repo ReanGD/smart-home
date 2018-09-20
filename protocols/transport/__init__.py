@@ -1,4 +1,5 @@
-from .base_transport import TransportError, StateError, LostConnection, SerrializeProtocol
+from .base_transport import (TransportError, StateError, LostConnection, SerrializeProtocol,
+                             ConnectionState)
 from .server import TCPServer, TCPServerConnection
 from .client import TCPClientConnection
 
@@ -7,6 +8,7 @@ __all__ = [
     'StateError',
     'LostConnection',
     'SerrializeProtocol',
+    'ConnectionState',
     'TCPServer',
     'TCPServerConnection',
     'TCPClientConnection',
