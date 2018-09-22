@@ -5,27 +5,19 @@ from protocols.yandex import YandexSerrializeProtocol, YandexClient, AddDataResp
 from .base import PhraseRecognizer, PhraseRecognizerConfig
 
 
-class Client(YandexClient):
-    def __init__(self, logger, callback, cfg: 'YandexConfig'):
-        super().__init__(logger, cfg.app, cfg.host, cfg.port, cfg.user_uuid, cfg.api_key, cfg.topic,
-                         cfg.lang, cfg.disable_antimat)
-        self._callback = callback
-
-    async def on_add_data_response(self, message: AddDataResponse):
-        await self._callback(message)
-
-
-class Yandex(PhraseRecognizer):
-    def __init__(self, config):
-        super().__init__(config, AudioSettings(channels=1, sample_format=PA_INT16, sample_rate=16000))
+class Yandex(PhraseRecognizer, YandexClient):
+    def __init__(self, cfg: 'YandexConfig'):
+        self._logger = getLogger('yandex_api')
         self._recv_callback = None
         self._last_text = ''
         self._is_continue = False
 
-        self._logger = getLogger('yandex_api')
-        self._connection = Client(self._logger, self._on_recv, config)
+        audio_settings = AudioSettings(channels=1, sample_format=PA_INT16, sample_rate=16000)
+        PhraseRecognizer.__init__(self, cfg, audio_settings)
+        YandexClient.__init__(self, self._logger, cfg.app, cfg.host, cfg.port, cfg.user_uuid,
+                              cfg.api_key, cfg.topic, cfg.lang, cfg.disable_antimat)
 
-    async def _on_recv(self, response: AddDataResponse):
+    async def on_add_data_response(self, response: AddDataResponse):
         if response.responseCode != 200:
             raise TransportError('Wrong responce code ({}) for AddData'.format(response.responseCode))
 
@@ -57,12 +49,12 @@ class Yandex(PhraseRecognizer):
         cfg = self.get_config()
 
         protocol = YandexSerrializeProtocol([AddDataResponse], self._logger)
-        await self._connection.connect(cfg.host, cfg.port, protocol)
+        await self.connect(cfg.host, cfg.port, protocol, max_attempt=6)
 
         while self._is_continue:
-            await self._connection.send_audio_data(await stream.read_full(50))
+            await self.send_audio_data(await stream.read_full(50))
 
-        await self._connection.close()
+        await self.close()
         self._last_text = ''
 
 
