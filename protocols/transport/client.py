@@ -10,13 +10,13 @@ class TCPClientConnection(TCPConnection):
         self.__port: int = None
         self.__max_attempt: int = None
 
-    async def connect(self, host: str, port: int, protocol: SerrializeProtocol,
-                      max_attempt: int = -1) -> None:
-        self._logger.info('Start connecting to %s:%d', host, port)
+    async def __connect(self, protocol: SerrializeProtocol) -> None:
+        self._logger.info('Start connecting to %s:%d', self.__host, self.__port)
 
-        self.__host = host
-        self.__port = port
-        self.__max_attempt = max_attempt
+        host = self.__host
+        port = self.__port
+        max_attempt = self.__max_attempt
+
         ssl = (port == 443)
         attempt = 1
         while attempt <= max_attempt or max_attempt == -1:
@@ -41,6 +41,14 @@ class TCPClientConnection(TCPConnection):
             self._logger.critical(msg)
             raise TransportError(msg)
 
+    async def connect(self, host: str, port: int, protocol: SerrializeProtocol,
+                      max_attempt: int = -1) -> None:
+        self.__host = host
+        self.__port = port
+        self.__max_attempt = max_attempt
+        self._change_state(ConnectionState.UNINITIALIZED)
+        await self.__connect(protocol)
+
     async def wait_reconnect_finished(self):
         while self.state not in [ConnectionState.RUNNING, ConnectionState.CLOSING]:
             await asyncio.sleep(0.01)
@@ -50,4 +58,4 @@ class TCPClientConnection(TCPConnection):
         assert self.__port is not None, 'Port not set'
         assert self._protocol is not None, 'Protocol not set'
         assert self.__max_attempt is not None, 'Max attempt not set'
-        await self.connect(self.__host, self.__port, self._protocol, self.__max_attempt)
+        await self.__connect(self._protocol)

@@ -139,3 +139,13 @@ class TestTransport:
     async def test_connect_to_down_server(self):
         with pytest.raises(TransportError):
             await self.create_client(2)
+
+    async def test_client_connect_after_close(self):
+        server, client = await self.create_pair()
+        await client.send(Message1(text='Request'))
+        await self.finish_event.wait()
+        await client.close()
+
+        await client.connect(self.host, self.port, self.client_protocol)
+        await client.send(Message1(text='Request'))
+        await self.close(server, client)

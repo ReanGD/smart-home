@@ -67,7 +67,7 @@ class TCPConnection:
     def state(self) -> ConnectionState:
         return self.__state
 
-    def __change_state(self, value: ConnectionState) -> None:
+    def _change_state(self, value: ConnectionState) -> None:
         self._logger.debug("Change state from %s to %s", self.__state.name, value.name)
         self.__state = value
 
@@ -138,7 +138,7 @@ class TCPConnection:
         self._protocol = protocol
         self._reader = reader
         self._writer = writer
-        self.__change_state(ConnectionState.INITIALIZATION)
+        self._change_state(ConnectionState.INITIALIZATION)
 
         try:
             await self.on_connect()
@@ -164,7 +164,7 @@ class TCPConnection:
             self._logger.info('Recv loop started')
             handler_name = ''
             message = None
-            self.__change_state(ConnectionState.RUNNING)
+            self._change_state(ConnectionState.RUNNING)
             while True:
                 if self.__state != ConnectionState.RUNNING:
                     self._logger.error('The receiving cycle is stopped, incorrect state: %s',
@@ -205,7 +205,7 @@ class TCPConnection:
             self._logger.info('Finished recv loop')
 
     async def __close(self, new_state: ConnectionState):
-        self.__change_state(new_state)
+        self._change_state(new_state)
 
         if self._writer is not None:
             try:
@@ -231,7 +231,7 @@ class TCPConnection:
         if self.__state == ConnectionState.CLOSING:
             self._logger.warning('Double close')
         elif self.__state == ConnectionState.LOST_CONNECTION:
-            self.__change_state(ConnectionState.CLOSING)
+            self._change_state(ConnectionState.CLOSING)
             self._logger.info('Close after lost connection')
         else:
             await self.__close(ConnectionState.CLOSING)
