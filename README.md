@@ -25,18 +25,6 @@ python setup.py install
 rm -rf ~/tmp/snowboy
 ```
 
-Create home-assistant virtual env (for arch)
------------------------------
-
-```bash
-cd ~/projects/venv
-virtualenv homeassistant
-source homeassistant/bin/activate
-pip3 install homeassistant
-hass --open-ui --config ~/projects/home/smart-home/etc/homeassistant
-deactivate
-```
-
 pyusb
 -----
 

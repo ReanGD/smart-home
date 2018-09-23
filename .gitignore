@@ -18,6 +18,3 @@ pocketsphinx/
 
 #proto
 **/*_pb2.py
-
-#home assistant
-etc/homeassistant/tts/*
