@@ -1,0 +1,22 @@
+- .idea
+- LICENSE
+- README.md
+- requirements.txt
+
+- .git
+- .gitignore
+
+- __pycache__
+- test
+- .pytest_cache
+- pytest.ini
+
+- **/*_pb2.py
+- /config.py
+
+- *.wav
+- *.db
+- *.log
+- samples/
+- samples_out/
+- pocketsphinx/
