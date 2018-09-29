@@ -1,21 +1,17 @@
-import logging
-from protocols.transport import TCPServerConnection, create_server
+from logging import Logger, getLogger
+from homeassistant.components import switch
+from homeassistant.core import HomeAssistant
+from protocols.transport import TCPServerConnection, TCPServer
 from protocols.home_assistant import (HASerrializeProtocol, StartRecognition, SetDeviceState,
                                       protobuf_to_device_id)
-import homeassistant.components.switch as switch
 
 
-logger = logging.getLogger('homeassistant.core')
-
-
-class HomeAssistentHandler(object):
-    def __init__(self, hass):
+class HomeAssistentConnection(TCPServerConnection):
+    def __init__(self, logger: Logger, hass: HomeAssistant):
+        super().__init__(logger)
         self._hass = hass
 
-    async def on_connect(self, conn: TCPServerConnection):
-        pass
-
-    async def on_set_device_state(self, conn: TCPServerConnection, message: SetDeviceState):
+    async def on_set_device_state(self, message: SetDeviceState):
         ids = protobuf_to_device_id(message.device, message.place, message.device_action)
         for device_id in ids:
             if message.device_action == SetDeviceState.TurnOff:
@@ -27,25 +23,28 @@ class HomeAssistentHandler(object):
 
 
 class HomeAssistentServer(object):
-    def __init__(self, hass, config):
-        # activate_timeout = config['voice_commands'].get('activate_timeout', 10)
+    def __init__(self, domain: str, hass: HomeAssistant):
         self._hass = hass
-        self._server = None
+        self._domain = domain
+        self._logger = getLogger(domain)
+        self._server = TCPServer(self._logger)
 
-    def handler_factory(self):
-        return HomeAssistentHandler(self._hass)
+    # async def activate_handle(self, call):
+    #     await self._server.send_to_all(StartRecognition())
 
-    async def activate_handle(self, call):
-        await self._server.send_to_all(StartRecognition())
+    async def run(self, domain: str):
+        protocol = HASerrializeProtocol([SetDeviceState], self._logger)
 
-    async def run(self, domain):
-        protocol = HASerrializeProtocol([SetDeviceState], logger)
-        self._server = await create_server('0.0.0.0', 8083, self.handler_factory, protocol, logger)
-        self._hass.services.async_register(domain, 'activate', self.activate_handle)
+        def handler_factory(logger):
+            return HomeAssistentConnection(logger, self._hass)
+
+        await self._server.run('0.0.0.0', 8083, handler_factory, protocol)
+        # self._hass.services.async_register(domain, 'activate', self.activate_handle)
 
 
-async def run(domain, hass, config) -> bool:
-    server = HomeAssistentServer(hass, config)
+async def run(domain: str, hass: HomeAssistant, config) -> bool:
+    # activate_timeout = config['voice_commands'].get('activate_timeout', 10)
+    server = HomeAssistentServer(domain, hass)
     await server.run(domain)
 
     return True
