@@ -4,7 +4,7 @@ import logging
 from test.test_proto import *
 from protocols.home_assistant import HASerrializeProtocol
 from protocols.transport import (TCPClientConnection, TCPServerConnection, TCPServer,
-                                 TransportError, LostConnection, ConnectionState)
+                                 TransportError, LostConnection, ConnectionState, TransportConfig)
 
 
 pytestmark = pytest.mark.asyncio
@@ -34,8 +34,8 @@ class ServerConnection(TCPServerConnection):
 
 
 class ClientConnection(TCPClientConnection):
-    def __init__(self, logger, event: asyncio.Event):
-        super().__init__(logger)
+    def __init__(self, logger, config, event: asyncio.Event):
+        super().__init__(logger, config)
         self.event = event
         self.recv_messages = []
 
@@ -65,6 +65,7 @@ class TestTransport:
 
         self.server_protocol = HASerrializeProtocol(types, self.get_logger('server'))
         self.client_protocol = HASerrializeProtocol(types, self.get_logger('client'))
+        self.address = TransportConfig('127.0.0.1', 8084)
 
     def get_logger(self, logger_name):
         logger = logging.getLogger(logger_name)
@@ -73,15 +74,15 @@ class TestTransport:
         return logger
 
     async def create_server(self):
-        server = TCPServer(self.get_logger('server'))
+        server = TCPServer(self.get_logger('server'), self.address)
 
         def handler_factory(logger):
             return ServerConnection(logger, self.finish_event)
-        return await server.run(self.host, self.port, handler_factory, self.server_protocol)
+        return await server.run(handler_factory, self.server_protocol)
 
     async def create_client(self, max_attempt: int=-1):
-        client = ClientConnection(self.get_logger('client'), self.finish_event)
-        await client.connect(self.host, self.port, self.client_protocol, max_attempt)
+        client = ClientConnection(self.get_logger('client'), self.address, self.finish_event)
+        await client.connect(self.client_protocol, max_attempt)
         return client
 
     async def create_pair(self):
@@ -146,6 +147,6 @@ class TestTransport:
         await self.finish_event.wait()
         await client.close()
 
-        await client.connect(self.host, self.port, self.client_protocol)
+        await client.connect(self.client_protocol)
         await client.send(Message1(text='Request'))
         await self.close(server, client)

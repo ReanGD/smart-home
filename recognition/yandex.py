@@ -1,4 +1,5 @@
 from logging import getLogger
+from etc import YanexTransportConfig
 from audio import PA_INT16, Stream, AudioSettings, SettingsConverter
 from protocols.transport import TransportError
 from protocols.yandex import YandexSerrializeProtocol, YandexClient, AddDataResponse
@@ -14,7 +15,7 @@ class Yandex(PhraseRecognizer, YandexClient):
 
         audio_settings = AudioSettings(channels=1, sample_format=PA_INT16, sample_rate=16000)
         PhraseRecognizer.__init__(self, cfg, audio_settings)
-        YandexClient.__init__(self, self._logger, cfg.app, cfg.host, cfg.port, cfg.user_uuid,
+        YandexClient.__init__(self, self._logger, cfg.address, cfg.app, cfg.user_uuid,
                               cfg.api_key, cfg.topic, cfg.lang, cfg.disable_antimat)
 
     async def on_add_data_response(self, response: AddDataResponse):
@@ -46,10 +47,9 @@ class Yandex(PhraseRecognizer, YandexClient):
         stream.crop_to(100)
         self._is_continue = True
         self._recv_callback = recv_callback
-        cfg = self.get_config()
 
         protocol = YandexSerrializeProtocol([AddDataResponse], self._logger)
-        await self.connect(cfg.host, cfg.port, protocol, max_attempt=6)
+        await self.connect(protocol, max_attempt=6)
 
         while self._is_continue:
             await self.send_audio_data(await stream.read_full(50))
@@ -65,9 +65,8 @@ class YandexConfig(PhraseRecognizerConfig):
         self.topic = topic
         self.lang = lang
         self.disable_antimat = disable_antimat
-        self.host = 'asr.yandex.net'
-        self.port = 443
         self.app = 'SmartHome'
+        self.address = YanexTransportConfig()
 
     def create_phrase_recognizer(self):
         return Yandex(self)

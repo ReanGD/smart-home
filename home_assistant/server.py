@@ -1,6 +1,7 @@
 from logging import Logger, getLogger
 from homeassistant.components import switch
 from homeassistant.core import HomeAssistant
+from etc import HassTransportConfig
 from protocols.transport import TCPServerConnection, TCPServer
 from protocols.home_assistant import (HASerrializeProtocol, StartRecognition, SetDeviceState,
                                       protobuf_to_device_id)
@@ -27,7 +28,7 @@ class HomeAssistentServer(object):
         self._hass = hass
         self._domain = domain
         self._logger = getLogger(domain)
-        self._server = TCPServer(self._logger)
+        self._server = TCPServer(self._logger, HassTransportConfig())
 
     # async def activate_handle(self, call):
     #     await self._server.send_to_all(StartRecognition())
@@ -38,7 +39,7 @@ class HomeAssistentServer(object):
         def handler_factory(logger):
             return HomeAssistentConnection(logger, self._hass)
 
-        await self._server.run('0.0.0.0', 8083, handler_factory, protocol)
+        await self._server.run(handler_factory, protocol)
         # self._hass.services.async_register(domain, 'activate', self.activate_handle)
 
 

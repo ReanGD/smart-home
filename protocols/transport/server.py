@@ -3,6 +3,7 @@ from logging import Logger
 from typing import Callable
 from google.protobuf import message as gp_message
 from .base_transport import SerrializeProtocol, TCPConnection
+from .config import TransportConfig
 
 
 class TCPServerConnection(TCPConnection):
@@ -11,9 +12,10 @@ class TCPServerConnection(TCPConnection):
 
 
 class TCPServer:
-    def __init__(self, logger: Logger):
+    def __init__(self, logger: Logger, config: TransportConfig):
         self._connections = set()
         self._logger = logger
+        self._config = config
         self._server_task = None
         self._handler_factory: Callable[[Logger], TCPServerConnection] = None
         self._protocol: SerrializeProtocol = None
@@ -40,13 +42,13 @@ class TCPServer:
         except Exception as ex:
             self._logger.info('Connect was closed, with message: %s', ex)
 
-    async def run(self, host: str, port: int,
-                  handler_factory: Callable[[Logger], TCPServerConnection],
+    async def run(self, handler_factory: Callable[[Logger], TCPServerConnection],
                   protocol: SerrializeProtocol) -> 'TCPServer':
-        self._logger.info('Start server on %s:%d', host, port)
+        self._logger.info('Start server on %s', self._config)
         self._handler_factory = handler_factory
         self._protocol = protocol
-        server_coro = asyncio.start_server(self.__handle_connection, host, port)
+        server_coro = asyncio.start_server(self.__handle_connection,
+                                           self._config.host, self._config.port)
         self._server_task = asyncio.ensure_future(server_coro)
 
         return self

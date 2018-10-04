@@ -1,21 +1,21 @@
 import asyncio
 from logging import Logger
 from .base_transport import SerrializeProtocol, TCPConnection, TransportError, ConnectionState
+from .config import TransportConfig
 
 
 class TCPClientConnection(TCPConnection):
-    def __init__(self, logger: Logger):
+    def __init__(self, logger: Logger, config: TransportConfig):
         super().__init__(logger)
-        self.__host: str = None
-        self.__port: int = None
-        self.__max_attempt: int = None
+        self._config = config
+        self._max_attempt: int = None
 
     async def __connect(self, protocol: SerrializeProtocol) -> None:
-        self._logger.info('Start connecting to %s:%d', self.__host, self.__port)
+        self._logger.info('Start connecting to %s', self._config)
 
-        host = self.__host
-        port = self.__port
-        max_attempt = self.__max_attempt
+        host = self._config.host
+        port = self._config.port
+        max_attempt = self._max_attempt
 
         ssl = (port == 443)
         attempt = 1
@@ -41,11 +41,8 @@ class TCPClientConnection(TCPConnection):
             self._logger.critical(msg)
             raise TransportError(msg)
 
-    async def connect(self, host: str, port: int, protocol: SerrializeProtocol,
-                      max_attempt: int = -1) -> None:
-        self.__host = host
-        self.__port = port
-        self.__max_attempt = max_attempt
+    async def connect(self, protocol: SerrializeProtocol, max_attempt: int = -1) -> None:
+        self._max_attempt = max_attempt
         self._change_state(ConnectionState.UNINITIALIZED)
         await self.__connect(protocol)
 
@@ -54,8 +51,6 @@ class TCPClientConnection(TCPConnection):
             await asyncio.sleep(0.01)
 
     async def on_lost_connection(self) -> None:
-        assert self.__host is not None, 'Host not set'
-        assert self.__port is not None, 'Port not set'
         assert self._protocol is not None, 'Protocol not set'
-        assert self.__max_attempt is not None, 'Max attempt not set'
+        assert self._max_attempt is not None, 'Max attempt not set'
         await self.__connect(self._protocol)

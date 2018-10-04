@@ -1,7 +1,8 @@
 import asyncio
 from logging import Logger
 from google.protobuf import message as gp_message
-from protocols.transport import TransportError, SerrializeProtocol, TCPClientConnection
+from protocols.transport import (TransportError, SerrializeProtocol, TCPClientConnection,
+                                 TransportConfig)
 from .basic_pb2 import ConnectionResponse
 from .voiceproxy_pb2 import AdvancedASROptions, ConnectionRequest, AddData
 
@@ -48,13 +49,11 @@ class YandexSerrializeProtocol(SerrializeProtocol):
 
 
 class YandexClient(TCPClientConnection):
-    def __init__(self, logger: Logger, app: str, host: str, port: int, user_uuid: str,
+    def __init__(self, logger: Logger, address: TransportConfig, app: str, user_uuid: str,
                  api_key: str, topic: str, lang: str, disable_antimat: bool):
         # pylint: disable=too-many-arguments
-        super().__init__(logger)
+        super().__init__(logger, address)
         self._app = app
-        self._host = host
-        self._port = port
 
         advanced_asr_options = AdvancedASROptions(
             partial_results=True,
@@ -96,9 +95,9 @@ class YandexClient(TCPClientConnection):
     async def __upgrade_connection(self) -> None:
         request = ('GET /asr_partial_checked HTTP/1.1\r\n'
                    'User-Agent: {app}\r\n'
-                   'Host: {host}:{port}\r\n'
+                   'Host: {address}\r\n'
                    'Upgrade: dictation\r\n\r\n'
-                   ).format(app=self._app, host=self._host, port=self._port).encode("utf-8")
+                   ).format(app=self._app, address=self._config.address).encode("utf-8")
         self._logger.debug('Start a connection upgrade')
 
         self._writer.write(request)
