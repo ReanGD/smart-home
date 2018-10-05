@@ -2,6 +2,7 @@ __all__ = [
     'device_info',
     'record',
     'yandex_recognition',
+    'yandex_management',
     # 'demo',
 
     # 'voice_recognition',

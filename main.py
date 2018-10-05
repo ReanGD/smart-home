@@ -24,7 +24,8 @@ async def run():
     device_index = 0
     # await device_info.run()
     # await record.run(device_index)
-    await yandex_recognition.run(device_index)
+    # await yandex_recognition.run(device_index)
+    await yandex_management.run(device_index)
     # await demo.run(device_index)
 
     # voice_recognition.run(device_index)
