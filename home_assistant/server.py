@@ -1,26 +1,101 @@
 from logging import Logger, getLogger
 from homeassistant.components import switch
 from homeassistant.core import HomeAssistant
-from etc import HassTransportConfig
+from nlp import Morphology
+from etc import HassTransportConfig, all_entitis
 from protocols.transport import TCPServerConnection, TCPServer
-from protocols.home_assistant import (HASerrializeProtocol, StartRecognition, SetDeviceState,
-                                      protobuf_to_device_id)
+from protocols.home_assistant import (HASerrializeProtocol, StartRecognition,
+                                      UserTextCommand, UserTextCommandResult)
+
+_TURN_ON_LIGHT_PLACE_TO_IDS = {
+    'hall': ['switch.hall_switch_right_ceiling_light'],
+    'kitchen': ['switch.kitchen_left_switch_ceiling_light'],
+    'restroom': ['switch.restroom_switch_ceiling_light'],
+    'bathroom': ['switch.bathroom_switch_right_ceiling_light'],
+    'livingroom': ['switch.livingroom_switch_ceiling_light'],
+    'playroom': ['switch.playroom_switch_ceiling_light'],
+}
+
+_TURN_ON_LIGHT_PLACE_TO_IDS['here'] = _TURN_ON_LIGHT_PLACE_TO_IDS['livingroom']
+
+_TURN_ON_LIGHT_PLACE_TO_IDS['all'] = (
+    _TURN_ON_LIGHT_PLACE_TO_IDS['hall'] +
+    _TURN_ON_LIGHT_PLACE_TO_IDS['kitchen'] +
+    _TURN_ON_LIGHT_PLACE_TO_IDS['restroom'] +
+    _TURN_ON_LIGHT_PLACE_TO_IDS['bathroom'] +
+    _TURN_ON_LIGHT_PLACE_TO_IDS['livingroom'] +
+    _TURN_ON_LIGHT_PLACE_TO_IDS['playroom'])
+
+_TURN_OFF_LIGHT_PLACE_TO_IDS = {
+    'hall': ['switch.hall_switch_right_ceiling_light'],
+    'kitchen': ['switch.kitchen_left_switch_ceiling_light',
+                'switch.kitchen_right_switch_backlight'],
+    'restroom': ['switch.restroom_switch_ceiling_light'],
+    'bathroom': ['switch.bathroom_switch_right_ceiling_light',
+                 'switch.bathroom_switch_left_additional_light'],
+    'livingroom': ['switch.livingroom_switch_ceiling_light'],
+    'playroom': ['switch.playroom_switch_ceiling_light'],
+}
+
+_TURN_OFF_LIGHT_PLACE_TO_IDS['here'] = _TURN_OFF_LIGHT_PLACE_TO_IDS['livingroom']
+
+_TURN_OFF_LIGHT_PLACE_TO_IDS['all'] = (
+    _TURN_OFF_LIGHT_PLACE_TO_IDS['hall'] +
+    _TURN_OFF_LIGHT_PLACE_TO_IDS['kitchen'] +
+    _TURN_OFF_LIGHT_PLACE_TO_IDS['restroom'] +
+    _TURN_OFF_LIGHT_PLACE_TO_IDS['bathroom'] +
+    _TURN_OFF_LIGHT_PLACE_TO_IDS['livingroom'] +
+    _TURN_OFF_LIGHT_PLACE_TO_IDS['playroom'])
+
+_DEVICE_ACTION_TO_FUNC = {
+    'turn_off': (switch.async_turn_off, _TURN_ON_LIGHT_PLACE_TO_IDS),
+    'turn_on':  (switch.async_turn_on, _TURN_OFF_LIGHT_PLACE_TO_IDS),
+}
 
 
 class HomeAssistentConnection(TCPServerConnection):
     def __init__(self, logger: Logger, hass: HomeAssistant):
         super().__init__(logger)
         self._hass = hass
+        self._morph = Morphology(all_entitis)
 
-    async def on_set_device_state(self, message: SetDeviceState):
-        ids = protobuf_to_device_id(message.device, message.place, message.device_action)
-        for device_id in ids:
-            if message.device_action == SetDeviceState.TurnOff:
-                switch.async_turn_off(self._hass, device_id)
-            elif message.device_action == SetDeviceState.TurnOn:
-                switch.async_turn_on(self._hass, device_id)
-            else:
-                pass
+    async def _run_command(self, cmd):
+        self._logger.info('Recognized the command: {}'.format(cmd))
+
+        device_action = cmd['device_action']
+        device = cmd['device']
+        place = cmd['place']
+        if device not in ['light', 'tv', 'music']:
+            self._logger.error('Unknown "device": {}'.format(device))
+            return False
+
+        if device != 'light':
+            self._logger.error('Unsupported "device": {}'.format(device))
+            return False
+
+        func, device_map = _DEVICE_ACTION_TO_FUNC.get(device_action, (None, None))
+        if func is None:
+            self._logger.error('Unknown "device_action": {}'.format(device_action))
+            return False
+
+        device_ids = device_map.get(place, None)
+        if device_ids is None:
+            self._logger.error('Unknown "place": {} for "device_action": {}'.format(
+                place, device_action))
+            return False
+
+        for device_id in device_ids:
+            func(self._hass, device_id)
+
+        return True
+
+    async def on_user_text_command(self, message: UserTextCommand):
+        cmd = self._morph.analyze(message.text)
+        isFinished = 'place' in cmd and 'device' in cmd and 'device_action' in cmd
+        if isFinished:
+            isFinished = await self._run_command(cmd)
+
+        await self.send(UserTextCommandResult(isFinished=isFinished))
 
 
 class HomeAssistentServer(object):
@@ -34,7 +109,7 @@ class HomeAssistentServer(object):
     #     await self._server.send_to_all(StartRecognition())
 
     async def run(self, domain: str):
-        protocol = HASerrializeProtocol([SetDeviceState], self._logger)
+        protocol = HASerrializeProtocol([UserTextCommand], self._logger)
 
         def handler_factory(logger):
             return HomeAssistentConnection(logger, self._hass)

@@ -5,33 +5,12 @@ message StartRecognition
 {
 }
 
-message SetDeviceState
+message UserTextCommand
 {
-  enum DeviceAction {
-    TurnOff = 0;
-    TurnOn = 1;
-  }
+  required string text = 1;
+}
 
-  required DeviceAction device_action = 1;
-
-  enum Device {
-    Light = 0;
-    TV = 1;
-    Music = 2;
-  }
-
-  required Device device = 2;
-
-  enum Place {
-    All = 0;
-    Here = 1;
-    Hall = 2;
-    Kitchen = 3;
-    Restroom = 4;
-    Bathroom = 5;
-    Livingroom = 6;
-    Playroom = 7;
-  }
-
-  required Place place = 3;
+message UserTextCommandResult
+{
+  required bool isFinished = 1;
 }

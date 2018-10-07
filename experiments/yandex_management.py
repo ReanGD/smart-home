@@ -1,10 +1,9 @@
 import config
 from logging import getLogger
-from nlp import Morphology
 from audio import Microphone
-from protocols.home_assistant import HASerrializeProtocol, SetDeviceState, entity_to_protobuf
+from protocols.home_assistant import HASerrializeProtocol, UserTextCommand, UserTextCommandResult
 from protocols.transport import TCPClientConnection
-from etc import HassTransportConfig, all_entitis
+from etc import HassTransportConfig
 
 
 logger = getLogger('demo')
@@ -13,47 +12,39 @@ logger = getLogger('demo')
 class YandexRecognition(TCPClientConnection):
     def __init__(self):
         super().__init__(logger, HassTransportConfig())
-        self._morph = Morphology(all_entitis)
         self._recognizer = config.yandex.create_phrase_recognizer()
+        self._isFinished = False
 
     async def start(self, index):
-        protocol = HASerrializeProtocol([], logger)
+        protocol = HASerrializeProtocol([UserTextCommandResult], logger)
         await self.connect(protocol, max_attempt = -1)
 
         with Microphone(device_index=index) as mic:
             logger.debug('settings: {}'.format(mic.get_settings()))
             logger.info('start recognize...')
+            self._isFinished = False
             await self._recognizer.recognize(mic, self.recv_callback)
             logger.info('stop recognize...')
 
-    async def _analyze(self, text):
-        cmd = self._morph.analyze(text)
-        success = 'place' in cmd and 'device' in cmd and 'device_action' in cmd
-        if success:
-            logger.info('Found command: {}'.format(cmd))
-            device_action = entity_to_protobuf('device_action', cmd['device_action'])
-            device = entity_to_protobuf('device', cmd['device'])
-            place = entity_to_protobuf('place', cmd['place'])
-
-            msg = SetDeviceState(device_action=device_action,
-                                 device=device,
-                                 place=place)
-            await self.send(msg)
-
-        return success, cmd
+    async def on_user_text_command_result(self, message: UserTextCommandResult):
+        if message.isFinished:
+            self._isFinished = True
 
     async def recv_callback(self, phrases, is_phrase_finished, _response):
+        if self._isFinished:
+            return False
+
         if not is_phrase_finished:
             text = phrases[0]
             logger.debug(text)
-            success, cmd = await self._analyze(text)
+            await self.send(UserTextCommand(text=text))
 
-            return not success
+            return True
         else:
             logger.debug('Final result:')
             for text in phrases:
                 logger.debug(text)
-                await self._analyze(text)
+                await self.send(UserTextCommand(text=text))
 
             return False
 
