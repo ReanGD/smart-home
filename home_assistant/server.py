@@ -8,12 +8,12 @@ from protocols.home_assistant import (HASerrializeProtocol, StartRecognition,
                                       UserTextCommand, UserTextCommandResult)
 
 _TURN_ON_LIGHT_PLACE_TO_IDS = {
-    'hall': ['switch.hall_switch_right_ceiling_light'],
-    'kitchen': ['switch.kitchen_left_switch_ceiling_light'],
-    'restroom': ['switch.restroom_switch_ceiling_light'],
-    'bathroom': ['switch.bathroom_switch_right_ceiling_light'],
-    'livingroom': ['switch.livingroom_switch_ceiling_light'],
-    'playroom': ['switch.playroom_switch_ceiling_light'],
+    'hall': ['switch.hall_light_ceiling'],
+    'kitchen': ['switch.kitchen_light_ceiling'],
+    'restroom': ['switch.restroom_light_ceiling'],
+    'bathroom': ['switch.bathroom_light_ceiling'],
+    'livingroom': ['switch.livingroom_light_ceiling'],
+    'playroom': ['switch.playroom_light_ceiling'],
 }
 
 _TURN_ON_LIGHT_PLACE_TO_IDS['here'] = _TURN_ON_LIGHT_PLACE_TO_IDS['livingroom']
@@ -27,14 +27,14 @@ _TURN_ON_LIGHT_PLACE_TO_IDS['all'] = (
     _TURN_ON_LIGHT_PLACE_TO_IDS['playroom'])
 
 _TURN_OFF_LIGHT_PLACE_TO_IDS = {
-    'hall': ['switch.hall_switch_right_ceiling_light'],
-    'kitchen': ['switch.kitchen_left_switch_ceiling_light',
-                'switch.kitchen_right_switch_backlight'],
-    'restroom': ['switch.restroom_switch_ceiling_light'],
-    'bathroom': ['switch.bathroom_switch_right_ceiling_light',
-                 'switch.bathroom_switch_left_additional_light'],
-    'livingroom': ['switch.livingroom_switch_ceiling_light'],
-    'playroom': ['switch.playroom_switch_ceiling_light'],
+    'hall': ['switch.hall_light_ceiling'],
+    'kitchen': ['switch.kitchen_light_ceiling',
+                'switch.kitchen_light_backlight'],
+    'restroom': ['switch.restroom_light_ceiling'],
+    'bathroom': ['switch.bathroom_light_ceiling',
+                 'switch.bathroom_light_ceiling_additional'],
+    'livingroom': ['switch.livingroom_light_ceiling'],
+    'playroom': ['switch.playroom_light_ceiling'],
 }
 
 _TURN_OFF_LIGHT_PLACE_TO_IDS['here'] = _TURN_OFF_LIGHT_PLACE_TO_IDS['livingroom']
