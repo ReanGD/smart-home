@@ -1,56 +1,10 @@
 from logging import Logger, getLogger
-from homeassistant.components import switch
 from homeassistant.core import HomeAssistant
 from nlp import Morphology
 from etc import HassTransportConfig, all_entitis
 from protocols.transport import TCPServerConnection, TCPServer
 from protocols.home_assistant import (HASerrializeProtocol, StartRecognition,
                                       UserTextCommand, UserTextCommandResult)
-
-_TURN_ON_LIGHT_PLACE_TO_IDS = {
-    'hall': ['switch.hall_light_ceiling'],
-    'kitchen': ['switch.kitchen_light_ceiling'],
-    'restroom': ['switch.restroom_light_ceiling'],
-    'bathroom': ['switch.bathroom_light_ceiling'],
-    'livingroom': ['switch.livingroom_light_ceiling'],
-    'playroom': ['switch.playroom_light_ceiling'],
-}
-
-_TURN_ON_LIGHT_PLACE_TO_IDS['here'] = _TURN_ON_LIGHT_PLACE_TO_IDS['livingroom']
-
-_TURN_ON_LIGHT_PLACE_TO_IDS['all'] = (
-    _TURN_ON_LIGHT_PLACE_TO_IDS['hall'] +
-    _TURN_ON_LIGHT_PLACE_TO_IDS['kitchen'] +
-    _TURN_ON_LIGHT_PLACE_TO_IDS['restroom'] +
-    _TURN_ON_LIGHT_PLACE_TO_IDS['bathroom'] +
-    _TURN_ON_LIGHT_PLACE_TO_IDS['livingroom'] +
-    _TURN_ON_LIGHT_PLACE_TO_IDS['playroom'])
-
-_TURN_OFF_LIGHT_PLACE_TO_IDS = {
-    'hall': ['switch.hall_light_ceiling'],
-    'kitchen': ['switch.kitchen_light_ceiling',
-                'switch.kitchen_light_backlight'],
-    'restroom': ['switch.restroom_light_ceiling'],
-    'bathroom': ['switch.bathroom_light_ceiling',
-                 'switch.bathroom_light_ceiling_additional'],
-    'livingroom': ['switch.livingroom_light_ceiling'],
-    'playroom': ['switch.playroom_light_ceiling'],
-}
-
-_TURN_OFF_LIGHT_PLACE_TO_IDS['here'] = _TURN_OFF_LIGHT_PLACE_TO_IDS['livingroom']
-
-_TURN_OFF_LIGHT_PLACE_TO_IDS['all'] = (
-    _TURN_OFF_LIGHT_PLACE_TO_IDS['hall'] +
-    _TURN_OFF_LIGHT_PLACE_TO_IDS['kitchen'] +
-    _TURN_OFF_LIGHT_PLACE_TO_IDS['restroom'] +
-    _TURN_OFF_LIGHT_PLACE_TO_IDS['bathroom'] +
-    _TURN_OFF_LIGHT_PLACE_TO_IDS['livingroom'] +
-    _TURN_OFF_LIGHT_PLACE_TO_IDS['playroom'])
-
-_DEVICE_ACTION_TO_FUNC = {
-    'turn_off': (switch.async_turn_off, _TURN_ON_LIGHT_PLACE_TO_IDS),
-    'turn_on':  (switch.async_turn_on, _TURN_OFF_LIGHT_PLACE_TO_IDS),
-}
 
 
 class HomeAssistentConnection(TCPServerConnection):
@@ -65,6 +19,7 @@ class HomeAssistentConnection(TCPServerConnection):
         device_action = cmd['device_action']
         device = cmd['device']
         place = cmd['place']
+
         if device not in ['light', 'tv', 'music']:
             self._logger.error('Unknown "device": {}'.format(device))
             return False
@@ -73,19 +28,29 @@ class HomeAssistentConnection(TCPServerConnection):
             self._logger.error('Unsupported "device": {}'.format(device))
             return False
 
-        func, device_map = _DEVICE_ACTION_TO_FUNC.get(device_action, (None, None))
-        if func is None:
+        if device_action not in ['turn_off', 'turn_on']:
             self._logger.error('Unknown "device_action": {}'.format(device_action))
             return False
 
-        device_ids = device_map.get(place, None)
-        if device_ids is None:
+        if device_action == 'turn_off':
+            device_action_str = 'off'
+        else:
+            device_action_str = 'on'
+
+        if place not in ['hall', 'kitchen', 'restroom', 'bathroom', 'livingroom', 'playroom',
+                         'all', 'here']:
             self._logger.error('Unknown "place": {} for "device_action": {}'.format(
                 place, device_action))
             return False
 
-        for device_id in device_ids:
-            func(self._hass, device_id)
+        if place == 'here':
+            place_str = 'livingroom'
+        else:
+            place_str = place
+
+        service = '{}_{}_{}'.format(place_str, device, device_action_str)
+        service_data = {}
+        await self._hass.services.async_call('script', service, service_data, False)
 
         return True
 
