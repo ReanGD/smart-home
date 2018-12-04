@@ -8,7 +8,13 @@ async def index(request):
 
 
 async def process_request(command, is_new):
-    return "привет"
+    if is_new:
+        text = ("Привет, я помощник для управления частным умным домом."
+                "Для работы навыка скажите кодовое слово."
+                "Если вы его не знаете, то для выхода скажите слово хватит.")
+    else:
+        text = "Неверный код доступа"
+    return text
 
 
 async def handler(request):
