@@ -20,8 +20,16 @@ device_action = {
     'turn_off': ['выключить','вырубить','отключить'],
 }
 
+stop = {
+    'stop': ['хватить', 'стоп', 'выйти', 'выход', 'остановить']
+}
+
 all_entitis = {
     'place': place,
     'device': device,
     'device_action': device_action,
+}
+
+alice_entitis = {
+    'stop': stop,
 }
