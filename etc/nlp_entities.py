@@ -24,6 +24,10 @@ stop = {
     'stop': ['хватить', 'стоп', 'выйти', 'выход', 'остановить'],
 }
 
+help = {
+    'help': ['помощь', 'подсказка', 'подсказать', 'инструкция', 'уметь'],
+}
+
 all_entitis = {
     'place': place,
     'device': device,
@@ -32,4 +36,5 @@ all_entitis = {
 
 alice_entitis = {
     'stop': stop,
+    'help': help,
 }

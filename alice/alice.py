@@ -26,8 +26,8 @@ class WebApplication:
 
     async def process_request(self, command, is_new) -> Response:
         if is_new:
-            text = ("Привет, я помощник для управления частным умным домом."
-                    "Это приватный навык, для авторизации скажите кодовое слово."
+            text = ("Привет, я помощник для управления частным умным домом. "
+                    "Это приватный навык, для авторизации скажите кодовое слово. "
                     "Если вы его не знаете, то для выхода скажите хватит.")
             return Response(text)
 
@@ -35,6 +35,11 @@ class WebApplication:
         if 'stop' in cmd:
             text = "Пока"
             return Response(text, end_session=True)
+        elif 'help' in cmd:
+            text = ("Я могу управлять умным домом. "
+                    "Для того, что бы начать, скажите кодовое слово. "
+                    "Если вы его не знаете, то для выхода скажите хватит.")
+            return Response(text)
 
         text = "Неверный код доступа"
         return Response(text)
