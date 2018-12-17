@@ -1,23 +1,8 @@
 import json
-from sys import stdout
 import logging
 from aiohttp import web
-from argparse import ArgumentParser
 from nlp import Morphology
 from etc import alice_entitis
-
-
-def init_logger(file_path):
-    if file_path is not None:
-        handler = logging.FileHandler(file_path)
-    else:
-        handler = logging.StreamHandler(stdout)
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
-    handler.setFormatter(formatter)
-
-    logger = logging.getLogger('alice')
-    logger.setLevel(logging.INFO)
-    logger.addHandler(handler)
 
 
 class Response:
@@ -81,12 +66,3 @@ class WebApplication:
 
         self._logger.info("out:{}".format(answer_str))
         return web.Response(text=answer_str)
-
-
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument("--socket")
-    parser.add_argument("--log", default=None)
-    args = parser.parse_args()
-    init_logger(args.log)
-    WebApplication().run(args.socket)
