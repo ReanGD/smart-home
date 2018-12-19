@@ -13,7 +13,7 @@ def init_logger(file_path):
     handler.setFormatter(formatter)
 
     logger = logging.getLogger('alice')
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     logger.addHandler(handler)
 
 

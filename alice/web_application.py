@@ -26,6 +26,9 @@ class WebApplication:
     async def index(self, request):
         return web.Response(text="Hello 3")
 
+    async def process_heartbeat(self) -> Response:
+        return Response("pong", end_session=True)
+
     async def process_request(self, command, is_new) -> Response:
         if is_new:
             text = ("Привет! Я помощник для управления частным умным домом. "
@@ -60,8 +63,17 @@ class WebApplication:
 
     async def handler(self, request):
         data = await request.json()
-        self._logger.info("in:{}".format(data))
-        response = await self.process_request(data["request"]["command"], data["session"]["new"])
+        command = data["request"]["command"]
+        is_new = data["session"]["new"]
+        is_heartbeat = command == "ping"
+
+        if not is_heartbeat:
+            self._logger.info("in:{}".format(data))
+
+        if is_heartbeat:
+            response = await self.process_heartbeat()
+        else:
+            response = await self.process_request(command, is_new)
 
         answer = {
             "response": {
@@ -77,5 +89,8 @@ class WebApplication:
         }
         answer_str = json.dumps(answer, ensure_ascii=False)
 
-        self._logger.info("out:{}".format(answer_str))
+        if is_heartbeat:
+            self._logger.debug("ping-pong")
+        else:
+            self._logger.info("out:{}".format(answer_str))
         return web.Response(text=answer_str)
