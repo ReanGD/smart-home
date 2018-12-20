@@ -3,7 +3,7 @@ import logging
 import random
 from aiohttp import web
 from nlp import Morphology
-from etc import alice_entitis
+from etc import alice_entitis, alice_cloud_config
 
 
 class Response:
