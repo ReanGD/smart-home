@@ -1,7 +1,7 @@
 import json
 import logging
 import random
-from aiohttp import web
+from aiohttp import web, ClientSession
 from nlp import Morphology
 from etc import alice_entitis, alice_cloud_config
 
@@ -17,6 +17,7 @@ class WebApplication:
         self._logger = logging.getLogger('alice')
         self._app = web.Application()
         self._morph = Morphology(alice_entitis)
+        self._session = ClientSession()
 
     def run(self, socket):
         self._app.add_routes([web.get('/', self.index),
@@ -28,6 +29,16 @@ class WebApplication:
 
     async def process_heartbeat(self) -> Response:
         return Response("pong", end_session=True)
+
+    async def process_authorized_request(self, data) -> Response:
+        data_bin = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        responce = await self._session.post(alice_cloud_config.authorized_handler_url,
+                                            data=data_bin)
+        answer = await responce.json()
+        text = answer["response"]["text"]
+        end_session = answer["response"]["end_session"]
+
+        return Response(text, end_session)
 
     async def process_request(self, command, is_new) -> Response:
         if is_new:
@@ -65,6 +76,8 @@ class WebApplication:
         data = await request.json()
         command = data["request"]["command"]
         is_new = data["session"]["new"]
+        user_id = data["session"]["user_id"]
+        authorized_user = user_id in alice_cloud_config.authorized_user_ids
         is_heartbeat = command == "ping"
 
         if not is_heartbeat:
@@ -72,6 +85,8 @@ class WebApplication:
 
         if is_heartbeat:
             response = await self.process_heartbeat()
+        elif authorized_user:
+            response = await self.process_authorized_request(data)
         else:
             response = await self.process_request(command, is_new)
 
