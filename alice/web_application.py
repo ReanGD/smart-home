@@ -31,14 +31,14 @@ class WebApplication:
         return Response("pong", end_session=True)
 
     async def process_authorized_request(self, data) -> Response:
+        url = alice_cloud_config.authorized_handler_url
         data_bin = json.dumps(data, ensure_ascii=False).encode("utf-8")
-        responce = await self._session.post(alice_cloud_config.authorized_handler_url,
-                                            data=data_bin)
-        answer = await responce.json()
-        text = answer["response"]["text"]
-        end_session = answer["response"]["end_session"]
+        async with self._session.post(url, data=data_bin) as responce:
+            answer = await responce.json()
+            text = answer["response"]["text"]
+            end_session = answer["response"]["end_session"]
 
-        return Response(text, end_session)
+            return Response(text, end_session)
 
     async def process_request(self, command, is_new) -> Response:
         if is_new:
@@ -108,4 +108,4 @@ class WebApplication:
             self._logger.debug("ping-pong")
         else:
             self._logger.info("out:{}".format(answer_str))
-        return web.Response(text=answer_str)
+        return web.Response(text=answer_str, content_type='application/json')
