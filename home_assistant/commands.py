@@ -82,6 +82,7 @@ class HassCommands:
 
         service_data = {}
         name = self._make_name(device, device_action, place)
+        self._logger.debug("Call script.{}".format(name))
         await self._hass.services.async_call('script', name, service_data, False)
 
         return True
