@@ -31,9 +31,10 @@ class WebApplication:
         return Response("pong", end_session=True)
 
     async def process_authorized_request(self, data) -> Response:
-        url = alice_cloud_config.authorized_handler_url
+        url = alice_cloud_config.hass_handler_url
+        headers = {"Authorization": "Bearer " + alice_cloud_config.hass_auth_token}
         data_bin = json.dumps(data, ensure_ascii=False).encode("utf-8")
-        async with self._session.post(url, data=data_bin) as responce:
+        async with self._session.post(url, data=data_bin, headers=headers) as responce:
             answer = await responce.json()
             text = answer["response"]["text"]
             end_session = answer["response"]["end_session"]
