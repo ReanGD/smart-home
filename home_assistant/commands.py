@@ -6,8 +6,7 @@ from etc import all_entitis
 
 
 class HassCommands:
-    def __init__(self, logger: Logger, hass: HomeAssistant, default_place: str):
-        self._hass = hass
+    def __init__(self, logger: Logger, default_place: str):
         self._logger = logger
         self._morph = Morphology(all_entitis)
         self._default_place = default_place
@@ -64,7 +63,7 @@ class HassCommands:
         result = '{}_{}_{}'.format(place_str, device, device_action_str)
         return result
 
-    async def execute(self, message: str) -> bool:
+    async def execute(self, hass: HomeAssistant, message: str) -> bool:
         cmd = self._morph.analyze(message)
 
         device = cmd.get('device', None)
@@ -83,6 +82,6 @@ class HassCommands:
         service_data = {}
         name = self._make_name(device, device_action, place)
         self._logger.debug("Call script.{}".format(name))
-        await self._hass.services.async_call('script', name, service_data, False)
+        await hass.services.async_call('script', name, service_data, False)
 
         return True
