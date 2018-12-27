@@ -26,12 +26,19 @@ class WebApplication:
         self._logger = logging.getLogger('alice')
         self._app = web.Application()
         self._morph = Morphology(alice_entitis)
-        self._session = ClientSession()
+        self._session = None
 
     def run(self, socket):
         self._app.add_routes([web.get('/', self.index),
                               web.post('/', self.handler)])
         web.run_app(self._app, path=socket)
+
+    def _get_session(self):
+        if self._session is None:
+            headers = {"Authorization": "Bearer " + alice_cloud_config.hass_auth_token}
+            self._session = ClientSession(headers = headers)
+
+        return self._session
 
     async def index(self, _request):
         return web.Response(text="Hello 3")
@@ -42,7 +49,6 @@ class WebApplication:
     async def process_authorized_request(self, command: str, is_new_session: bool, session_id: str,
                                          user_id: str) -> Response:
         url = alice_cloud_config.hass_handler_url
-        headers = {"Authorization": "Bearer " + alice_cloud_config.hass_auth_token}
         data = {
             "command": command,
             "is_new_session": is_new_session,
@@ -50,7 +56,7 @@ class WebApplication:
             "user_id": user_id,
         }
         data_bin = json.dumps(data, ensure_ascii=False).encode("utf-8")
-        async with self._session.post(url, data=data_bin, headers=headers) as responce:
+        async with self._get_session().post(url, data=data_bin) as responce:
             answer = await responce.json()
             return Response(answer["text"], answer["tts"], answer["end_session"])
 
