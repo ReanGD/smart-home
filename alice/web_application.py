@@ -1,15 +1,24 @@
 import json
 import logging
 import random
+from typing import Optional, Dict, Union
 from aiohttp import web, ClientSession
 from nlp import Morphology
 from etc import alice_entitis, alice_cloud_config
 
 
 class Response:
-    def __init__(self, text, end_session=False):
+    def __init__(self, text: str, tts: Optional[str] = None, end_session: bool = False):
         self.text = text
+        self.tts = tts
         self.end_session = end_session
+
+    def as_dict(self) -> Dict[str, Union[str, bool]]:
+        result = {"text": self.text, "end_session": self.end_session}
+        if self.tts is not None:
+            result["tts"] = self.tts
+
+        return result
 
 
 class WebApplication:
@@ -24,25 +33,29 @@ class WebApplication:
                               web.post('/', self.handler)])
         web.run_app(self._app, path=socket)
 
-    async def index(self, request):
+    async def index(self, _request):
         return web.Response(text="Hello 3")
 
     async def process_heartbeat(self) -> Response:
         return Response("pong", end_session=True)
 
-    async def process_authorized_request(self, data) -> Response:
+    async def process_authorized_request(self, command: str, is_new_session: bool, session_id: str,
+                                         user_id: str) -> Response:
         url = alice_cloud_config.hass_handler_url
         headers = {"Authorization": "Bearer " + alice_cloud_config.hass_auth_token}
+        data = {
+            "command": command,
+            "is_new_session": is_new_session,
+            "session_id": session_id,
+            "user_id": user_id,
+        }
         data_bin = json.dumps(data, ensure_ascii=False).encode("utf-8")
         async with self._session.post(url, data=data_bin, headers=headers) as responce:
             answer = await responce.json()
-            text = answer["response"]["text"]
-            end_session = answer["response"]["end_session"]
+            return Response(answer["text"], answer["tts"], answer["end_session"])
 
-            return Response(text, end_session)
-
-    async def process_request(self, command, is_new) -> Response:
-        if is_new:
+    async def process_request(self, command: str, is_new_session: bool) -> Response:
+        if is_new_session:
             text = ("Привет! Я помощник для управления частным умным домом. "
                     "Это приватный навык, поэтому для того, что бы я заработал, "
                     "произнесите кодовое слово. "
@@ -76,7 +89,8 @@ class WebApplication:
     async def handler(self, request):
         data = await request.json()
         command = data["request"]["command"]
-        is_new = data["session"]["new"]
+        is_new_session = data["session"]["new"]
+        session_id = data["session"]["session_id"]
         user_id = data["session"]["user_id"]
         authorized_user = user_id in alice_cloud_config.authorized_user_ids
         is_heartbeat = command == "ping"
@@ -87,19 +101,17 @@ class WebApplication:
         if is_heartbeat:
             response = await self.process_heartbeat()
         elif authorized_user:
-            response = await self.process_authorized_request(data)
+            response = await self.process_authorized_request(command, is_new_session, session_id,
+                                                             user_id)
         else:
-            response = await self.process_request(command, is_new)
+            response = await self.process_request(command, is_new_session)
 
         answer = {
-            "response": {
-                "text": response.text,
-                "end_session": response.end_session,
-            },
+            "response": response.as_dict(),
             "session": {
-                "session_id": data["session"]["session_id"],
+                "session_id": session_id,
                 "message_id": data["session"]["message_id"],
-                "user_id": data["session"]["user_id"],
+                "user_id": user_id,
             },
             "version": data["version"]
         }

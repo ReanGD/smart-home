@@ -17,36 +17,34 @@ class AliceHandlerView(HomeAssistantView):
         self._command = HassCommands(self._logger, default_place)
 
     async def post(self, request):
-        hass = request.app['hass']
+        hass = request.app["hass"]
         data = await request.json()
         self._logger.info("in:{}".format(data))
-        is_new = data["session"]["new"]
-        command = data["request"]["command"]
+
+        command = data["command"].strip()
+        is_new_session = data["is_new_session"]
+        # user_id = data["user_id"]
+        # session_id = data["session_id"]
 
         end_session = False
-        if is_new:
-            text = 'Привет'
+        if is_new_session and len(command) == 0:
+            text = "Привет"
         elif await self._command.execute(hass, command):
-            text = 'Выполняю'
+            text = "Выполняю"
+            if is_new_session:
+                end_session = True
         else:
-            text = 'Я не могу это сделать'
+            text = "Я не могу это сделать"
 
         answer = {
-            "response": {
-                "text": text,
-                "end_session": end_session,
-            },
-            "session": {
-                "session_id": data["session"]["session_id"],
-                "message_id": data["session"]["message_id"],
-                "user_id": data["session"]["user_id"],
-            },
-            "version": data["version"]
+            "text": text,
+            "tts": text,
+            "end_session": end_session,
         }
         answer_str = json.dumps(answer, ensure_ascii=False)
 
         self._logger.info("out:{}".format(answer_str))
-        return web.Response(text=answer_str, content_type='application/json')
+        return web.Response(text=answer_str, content_type="application/json")
 
 
 async def run(domain: str, hass: HomeAssistant, config) -> bool:
